@@ -8,6 +8,7 @@ import os
 import sys
 import json
 import re
+import requests
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
@@ -65,6 +66,44 @@ class LibraryAdvisoryBot:
         self.use_ai = False
         self._init_azure_openai()
         
+        # Define function tools for OpenAI function calling
+        self.function_tools = [
+            {
+                "type": "function",
+                "function": {
+                    "name": "check_nuget_package",
+                    "description": "Check package information from NuGet registry including version, downloads, and metadata",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "package_name": {
+                                "type": "string",
+                                "description": "The name of the NuGet package to check"
+                            }
+                        },
+                        "required": ["package_name"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "check_npm_package",
+                    "description": "Check package information from npm registry including version, downloads, and metadata",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "package_name": {
+                                "type": "string",
+                                "description": "The name of the npm package to check"
+                            }
+                        },
+                        "required": ["package_name"]
+                    }
+                }
+            }
+        ]
+        
     def _init_azure_openai(self):
         """Initialize Azure OpenAI client"""
         if not AZURE_OPENAI_AVAILABLE:
@@ -116,22 +155,32 @@ When a user provides information about a library or asks for library recommendat
 
 ### Economic & Legal Assessment
 - Cost Analysis (Giá thành): Break down total cost of ownership including licensing fees, implementation costs, training, and maintenance
-- License Terms: Detailed analysis of licensing model (MIT, Apache, GPL, commercial, etc.), usage restrictions, and compliance requirements
+- License Terms: Detailed analysis of licensing model (MIT, Apache, GPL, commercial, etc.) from actual registry data
 - Pricing Structure: Compare different pricing tiers, enterprise vs. open-source options, and cost-benefit analysis
 
 ### Risk & Security Evaluation
 - Risk Assessment: Identify technical risks, vendor lock-in, discontinuation risk, compatibility issues, and migration challenges
 - Security Analysis: Evaluate security track record, vulnerability history, update frequency, and security best practices
-- Patching & Updates: Assess update frequency, backward compatibility, security patch timeline, and maintenance lifecycle
+- Patching & Updates: Assess update frequency from registry data, backward compatibility, security patch timeline, and maintenance lifecycle
+- **Popularity Metrics**: Use actual download statistics and community engagement metrics from package registries
 
 ### Operational Considerations
 - Flexibility: Analyze customization options, extensibility, configuration flexibility, and adaptation capabilities
 - Integration: Evaluate compatibility with existing systems, API quality, and ecosystem integration
+- **Maintenance Status**: Check actual release frequency and version activity from registry data
 
 ### Comparative Analysis
 - Similar Library Comparison: Automatically identify and compare with 3-5 similar libraries in the same domain
 - Feature Matrix: Create detailed comparison tables highlighting key differences
 - Use Case Recommendations: Suggest which library is best for specific scenarios
+- **Registry Data Comparison**: Include actual statistics like download counts, version frequency, and community size
+
+## Function Usage Guidelines
+
+1. **Always Check Registries**: When analyzing .NET packages, use check_nuget_package. For JavaScript/Node.js packages, use check_npm_package
+2. **Include Registry Data**: Incorporate version information, download statistics, license details, and metadata in your analysis
+3. **Verify Currency**: Use registry data to assess how actively maintained a package is
+4. **Compare Metrics**: When comparing libraries, include actual download statistics and version release patterns
 
 ## Response Format
 
@@ -143,21 +192,30 @@ Structure your responses as follows:
 ## Overview
 [Brief description and primary use cases]
 
+## Registry Information 📊
+- **Latest Version**: [From registry check]
+- **Download Statistics**: [Weekly/total downloads from registry]
+- **Maintenance Status**: [Based on version release frequency]
+- **License**: [From registry metadata]
+- **Repository**: [From registry metadata]
+
 ## Advantages ✅
 - [List key strengths with specific examples]
+- [Include popularity metrics from registry data]
 
 ## Disadvantages ❌
 - [List limitations and concerns]
+- [Include any version/maintenance concerns from registry data]
 
 ## Cost & Licensing 💰
-- License: [License type and key terms]
+- License: [License type from registry data and key terms]
 - Pricing: [Cost structure and options]
 - Total Cost of Ownership: [Implementation and maintenance costs]
 
 ## Risk Assessment ⚠️
 - Security: [Security posture and track record]
-- Maintenance: [Update frequency and long-term viability]
-- Business Risk: [Vendor stability and community health]
+- Maintenance: [Update frequency and long-term viability from registry data]
+- Business Risk: [Vendor stability and community health based on registry metrics]
 
 ## Technical Considerations 🔧
 - Complexity: [Implementation difficulty rating: Low/Medium/High]
@@ -167,7 +225,7 @@ Structure your responses as follows:
 ## Similar Libraries Comparison 📊
 | Feature | [Target Library] | Alternative 1 | Alternative 2 | Alternative 3 |
 |---------|------------------|---------------|---------------|---------------|
-| [Key features comparison table]
+| [Key features comparison table with registry statistics]
 
 ## Recommendations 🎯
 - Best for: [Ideal use cases and scenarios]
@@ -179,17 +237,170 @@ Structure your responses as follows:
 
 When users ask for library recommendations:
 1. Clarify Requirements: Ask about programming language, use case, performance requirements, budget constraints, and team expertise
-2. Provide Multiple Options: Always suggest 3-5 alternatives with different trade-offs
-3. Context-Aware Recommendations: Consider team size, project timeline, and organizational constraints
-4. Future-Proofing: Evaluate long-term sustainability and evolution path
+2. Check Registries: Use function calls to get current information about suggested packages
+3. Provide Multiple Options: Always suggest 3-5 alternatives with different trade-offs, including registry statistics
+4. Context-Aware Recommendations: Consider team size, project timeline, and organizational constraints
+5. Future-Proofing: Evaluate long-term sustainability and evolution path based on actual registry data
 
 ## Interaction Style
 
 - Be Objective: Present balanced analysis without bias toward any particular solution
-- Use Data: Support recommendations with concrete metrics, benchmarks, and evidence
+- Use Current Data: Always use function calls to get the most recent registry information
+- Support with Evidence: Use concrete metrics, benchmarks, and registry statistics
 - Consider Context: Tailor advice to user's specific situation and constraints
-- Stay Current: Acknowledge when information might be outdated and recommend verification
-- Be Practical: Focus on actionable insights and real-world implications"""
+- Stay Current: Leverage real-time registry data to provide up-to-date insights
+- Be Practical: Focus on actionable insights and real-world implications based on actual usage statistics"""
+
+    def check_nuget_package(self, package_name: str) -> Dict:
+        """Check package information from NuGet registry"""
+        try:
+            # NuGet API endpoint for package information
+            url = f"https://api.nuget.org/v3-flatcontainer/{package_name.lower()}/index.json"
+            response = requests.get(url, timeout=10)
+            
+            if response.status_code == 200:
+                try:
+                    versions_data = response.json()
+                    if isinstance(versions_data, dict) and 'versions' in versions_data:
+                        latest_version = versions_data['versions'][-1] if versions_data['versions'] else "Unknown"
+                        versions_count = len(versions_data['versions'])
+                    else:
+                        latest_version = "Unknown"
+                        versions_count = 0
+                except (json.JSONDecodeError, KeyError, IndexError):
+                    latest_version = "Unknown"
+                    versions_count = 0
+                
+                # Get package metadata using NuGet V3 API
+                metadata_url = f"https://api.nuget.org/v3/registration5-semver1/{package_name.lower()}/index.json"
+                metadata_response = requests.get(metadata_url, timeout=10)
+                
+                metadata = {}
+                if metadata_response.status_code == 200:
+                    try:
+                        meta_data = metadata_response.json()
+                        if isinstance(meta_data, dict) and 'items' in meta_data and meta_data['items']:
+                            latest_item = meta_data['items'][-1]
+                            if isinstance(latest_item, dict) and 'items' in latest_item and latest_item['items']:
+                                latest_package = latest_item['items'][-1]
+                                if isinstance(latest_package, dict):
+                                    catalog_entry = latest_package.get('catalogEntry', {})
+                                    if isinstance(catalog_entry, dict):
+                                        metadata = {
+                                            "description": catalog_entry.get('description', 'No description available'),
+                                            "authors": catalog_entry.get('authors', 'Unknown'),
+                                            "license": catalog_entry.get('licenseExpression', catalog_entry.get('licenseUrl', 'Unknown')),
+                                            "project_url": catalog_entry.get('projectUrl', ''),
+                                            "tags": catalog_entry.get('tags', []),
+                                            "published": catalog_entry.get('published', 'Unknown')
+                                        }
+                    except (json.JSONDecodeError, KeyError, IndexError, TypeError):
+                        pass
+                
+                return {
+                    "status": "found",
+                    "package_name": package_name,
+                    "latest_version": latest_version,
+                    "registry": "NuGet",
+                    "metadata": metadata,
+                    "versions_count": versions_count,
+                    "registry_url": f"https://www.nuget.org/packages/{package_name}"
+                }
+            else:
+                return {
+                    "status": "not_found",
+                    "package_name": package_name,
+                    "registry": "NuGet",
+                    "error": f"Package not found (HTTP {response.status_code})"
+                }
+                
+        except Exception as e:
+            return {
+                "status": "error",
+                "package_name": package_name,
+                "registry": "NuGet",
+                "error": str(e)
+            }
+    
+    def check_npm_package(self, package_name: str) -> Dict:
+        """Check package information from npm registry"""
+        try:
+            # npm API endpoint for package information
+            url = f"https://registry.npmjs.org/{package_name}"
+            response = requests.get(url, timeout=10)
+            
+            if response.status_code == 200:
+                data = response.json()
+                
+                # Extract key information
+                latest_version = data.get('dist-tags', {}).get('latest', 'Unknown')
+                description = data.get('description', 'No description available')
+                
+                # Get version information
+                versions = data.get('versions', {})
+                latest_version_info = versions.get(latest_version, {})
+                
+                # Get download statistics (weekly downloads)
+                downloads_url = f"https://api.npmjs.org/downloads/point/last-week/{package_name}"
+                downloads_response = requests.get(downloads_url, timeout=5)
+                weekly_downloads = "Unknown"
+                if downloads_response.status_code == 200:
+                    downloads_data = downloads_response.json()
+                    weekly_downloads = downloads_data.get('downloads', 'Unknown')
+                
+                metadata = {
+                    "description": description,
+                    "author": data.get('author', {}).get('name', 'Unknown') if isinstance(data.get('author'), dict) else str(data.get('author', 'Unknown')),
+                    "license": latest_version_info.get('license', data.get('license', 'Unknown')),
+                    "homepage": data.get('homepage', ''),
+                    "repository": data.get('repository', {}).get('url', '') if isinstance(data.get('repository'), dict) else str(data.get('repository', '')),
+                    "keywords": data.get('keywords', []),
+                    "weekly_downloads": weekly_downloads,
+                    "maintainers": len(data.get('maintainers', [])),
+                    "created": data.get('time', {}).get('created', 'Unknown'),
+                    "modified": data.get('time', {}).get('modified', 'Unknown')
+                }
+                
+                return {
+                    "status": "found",
+                    "package_name": package_name,
+                    "latest_version": latest_version,
+                    "registry": "npm",
+                    "metadata": metadata,
+                    "versions_count": len(versions),
+                    "registry_url": f"https://www.npmjs.com/package/{package_name}"
+                }
+            else:
+                return {
+                    "status": "not_found",
+                    "package_name": package_name,
+                    "registry": "npm",
+                    "error": f"Package not found (HTTP {response.status_code})"
+                }
+                
+        except Exception as e:
+            return {
+                "status": "error",
+                "package_name": package_name,
+                "registry": "npm",
+                "error": str(e)
+            }
+    
+    def _execute_function_call(self, function_name: str, arguments: Dict) -> str:
+        """Execute function calls from OpenAI"""
+        try:
+            if function_name == "check_nuget_package":
+                package_name = arguments.get("package_name")
+                result = self.check_nuget_package(package_name)
+                return json.dumps(result, indent=2)
+            elif function_name == "check_npm_package":
+                package_name = arguments.get("package_name")
+                result = self.check_npm_package(package_name)
+                return json.dumps(result, indent=2)
+            else:
+                return f"Unknown function: {function_name}"
+        except Exception as e:
+            return f"Error executing function {function_name}: {str(e)}"
 
     def _load_library_database(self) -> Dict:
         """Load or initialize the library database"""
@@ -378,7 +589,7 @@ When users ask for library recommendations:
             return "Unknown"
 
     def _call_azure_openai(self, user_query: str, context: str = "") -> Optional[str]:
-        """Call Azure OpenAI for intelligent analysis"""
+        """Call Azure OpenAI for intelligent analysis with function calling support"""
         if not self.use_ai or not self.azure_client:
             return None
             
@@ -410,14 +621,51 @@ When users ask for library recommendations:
                             "content": entry['response'][:500]  # Truncate long responses
                         })
             
+            # Initial API call with function tools
             response = self.azure_client.chat.completions.create(
                 model=self.deployment_name,
                 messages=messages,
                 temperature=self.temperature,
-                max_tokens=self.max_tokens
+                max_tokens=self.max_tokens,
+                tools=self.function_tools,
+                tool_choice="auto"
             )
             
-            return response.choices[0].message.content
+            response_message = response.choices[0].message
+            tool_calls = response_message.tool_calls
+            
+            # If the model wants to call functions
+            if tool_calls:
+                # Add the assistant's response to messages
+                messages.append(response_message)
+                
+                # Process each function call
+                for tool_call in tool_calls:
+                    function_name = tool_call.function.name
+                    function_args = json.loads(tool_call.function.arguments)
+                    
+                    # Execute the function
+                    function_response = self._execute_function_call(function_name, function_args)
+                    
+                    # Add function response to messages
+                    messages.append({
+                        "role": "tool",
+                        "tool_call_id": tool_call.id,
+                        "content": function_response
+                    })
+                
+                # Get the final response from the model
+                final_response = self.azure_client.chat.completions.create(
+                    model=self.deployment_name,
+                    messages=messages,
+                    temperature=self.temperature,
+                    max_tokens=self.max_tokens
+                )
+                
+                return final_response.choices[0].message.content
+            else:
+                # No function calls, return the regular response
+                return response_message.content
             
         except Exception as e:
             print(f"{Colors.FAIL}Error calling Azure OpenAI: {e}{Colors.ENDC}")

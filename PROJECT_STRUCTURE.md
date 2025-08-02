@@ -2,19 +2,34 @@
 
 ```
 LibraryAdvisory/
-├── library_advisory_bot.py    # Main chatbot application with Azure OpenAI
+├── library_advisory_bot.py    # Main chatbot application with Azure OpenAI and function calling
+├── app.py                     # Flask web application with function calling support
 ├── requirements.txt           # Python dependencies
 ├── .env.example              # Environment template
 ├── .env                      # Environment configuration (configure with your credentials)
 ├── .gitignore               # Git ignore file
-├── README.md                # Main documentation
+├── README.md                # Main documentation with function calling features
 ├── EXAMPLES.md              # Usage examples and workflows
 ├── setup.sh                 # Automated setup script
-├── run_bot.sh              # Bot launcher script
+├── run_bot.sh              # Bot launcher script (Linux/Mac)
+├── run_demo.ps1            # Function calling demo launcher (Windows PowerShell)
 ├── test_installation.py    # Installation verification script
+├── examples/               # Example scripts and demos
+│   ├── function_calling_demo.py  # Function calling demonstration
+│   └── .gitkeep            # Directory placeholder
 ├── reports/                 # Generated analysis reports
 │   ├── .gitkeep            # Directory description and placeholder
 │   └── sample_*.md         # Example report format
+├── static/                 # Web application assets
+│   └── css/
+│       └── style.css       # Web interface styling
+├── templates/              # Flask HTML templates
+│   ├── base.html           # Base template
+│   ├── index.html          # Chat interface
+│   ├── compare.html        # Library comparison
+│   ├── recommendations.html # Recommendations page
+│   ├── about.html          # About page
+│   └── help.html           # Help documentation
 └── library_database.json   # Auto-generated library database (created on first run)
 ```
 

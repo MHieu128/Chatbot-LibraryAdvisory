@@ -5,6 +5,7 @@ A comprehensive terminal chatbot for software library evaluation and recommendat
 ## Features
 
 - **AI-Enhanced Analysis**: Powered by Azure OpenAI for intelligent insights and recommendations
+- **Real-time Package Registry Integration**: Live data from NuGet and npm registries using function calling
 - **Comprehensive Library Analysis**: Technical evaluation, cost analysis, risk assessment
 - **Library Comparison**: Side-by-side comparison of multiple libraries with AI insights
 - **Intelligent Recommendations**: Context-aware suggestions based on requirements
@@ -12,6 +13,7 @@ A comprehensive terminal chatbot for software library evaluation and recommendat
 - **Cost & Licensing Analysis**: Total cost of ownership and licensing compliance
 - **Migration Guidance**: Path planning for library transitions
 - **Conversation Context**: Maintains conversation history for better AI responses
+- **Function Calling**: Real-time package information from official registries
 
 ## Installation
 
@@ -93,8 +95,40 @@ Once the chatbot is running, you can use these commands:
 🤖 Library Advisor: tell me about Express.js
 🤖 Library Advisor: ai What are the security considerations for React applications?
 🤖 Library Advisor: ai Compare the learning curves of Django vs FastAPI
+🤖 Library Advisor: ai Check the latest version of Newtonsoft.Json
+🤖 Library Advisor: ai How popular is the Express package on npm?
 🤖 Library Advisor: save
 ```
+
+## Function Calling Features
+
+The system now includes advanced function calling capabilities that provide real-time package information:
+
+### Supported Registries
+
+- **NuGet (.NET packages)**: Real-time version information, download statistics, licensing, and metadata
+- **npm (JavaScript/Node.js packages)**: Current versions, weekly downloads, repository links, and package details
+
+### Automatic Registry Integration
+
+When you ask about packages, the AI automatically:
+1. **Checks Package Registries**: Fetches current version and download statistics
+2. **Validates Existence**: Confirms packages exist and are actively maintained
+3. **Extracts Metadata**: Gets licensing, authorship, and repository information
+4. **Includes in Analysis**: Incorporates real-time data into recommendations
+
+### Function Calling Demo
+
+Run the included demonstration script:
+```bash
+python examples/function_calling_demo.py
+```
+
+This will show:
+- NuGet package checking (e.g., Newtonsoft.Json)
+- npm package checking (e.g., Express)
+- Error handling for non-existent packages
+- AI-enhanced analysis with live registry data
 
 ## Report Generation
 
