@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+
+{% block title %}Compare Libraries - Library Advisory System{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <h2><i class="fas fa-balance-scale text-primary"></i> Compare Libraries</h2>
+            <p class="text-muted">Compare two libraries side by side to make informed decisions.</p>
+            
+            <div class="row mt-4">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="fas fa-book"></i> Library 1</h5>
+                        </div>
+                        <div class="card-body">
+                            <input type="text" id="library1" class="form-control" 
+                                   placeholder="Enter first library name (e.g., React)">
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="fas fa-book"></i> Library 2</h5>
+                        </div>
+                        <div class="card-body">
+                            <input type="text" id="library2" class="form-control" 
+                                   placeholder="Enter second library name (e.g., Vue.js)">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="text-center mt-4">
+                <button class="btn btn-primary btn-lg" onclick="compareLibraries()">
+                    <i class="fas fa-balance-scale"></i> Compare Libraries
+                </button>
+            </div>
+            
+            <!-- Results Area -->
+            <div id="comparisonResults" class="mt-4" style="display: none;">
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-chart-line"></i> Comparison Results</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="comparisonContent"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Quick Examples -->
+            <div class="mt-5">
+                <h4>Popular Comparisons</h4>
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="card library-card" onclick="quickCompare('React', 'Vue.js')">
+                            <div class="card-body text-center">
+                                <h6>React vs Vue.js</h6>
+                                <p class="text-muted small">Frontend Frameworks</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card library-card" onclick="quickCompare('Django', 'Flask')">
+                            <div class="card-body text-center">
+                                <h6>Django vs Flask</h6>
+                                <p class="text-muted small">Python Web Frameworks</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card library-card" onclick="quickCompare('React', 'Angular')">
+                            <div class="card-body text-center">
+                                <h6>React vs Angular</h6>
+                                <p class="text-muted small">Enterprise Frameworks</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Loading Modal -->
+<div class="modal fade" id="loadingModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-body text-center">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <div class="mt-2">Comparing libraries...</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function quickCompare(lib1, lib2) {
+    document.getElementById('library1').value = lib1;
+    document.getElementById('library2').value = lib2;
+    compareLibraries();
+}
+
+function compareLibraries() {
+    const lib1 = document.getElementById('library1').value.trim();
+    const lib2 = document.getElementById('library2').value.trim();
+    
+    if (!lib1 || !lib2) {
+        alert('Please enter both library names');
+        return;
+    }
+    
+    if (lib1.toLowerCase() === lib2.toLowerCase()) {
+        alert('Please choose two different libraries to compare');
+        return;
+    }
+    
+    // Show loading modal
+    const loadingModal = new bootstrap.Modal(document.getElementById('loadingModal'));
+    loadingModal.show();
+    
+    // Send comparison request
+    fetch('/compare_libraries', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ lib1: lib1, lib2: lib2 })
+    })
+    .then(response => response.json())
+    .then(data => {
+        loadingModal.hide();
+        if (data.error) {
+            alert('Error: ' + data.error);
+        } else {
+            displayComparison(data.comparison, data.lib1, data.lib2);
+        }
+    })
+    .catch(error => {
+        loadingModal.hide();
+        alert('Error comparing libraries');
+        console.error('Error:', error);
+    });
+}
+
+function displayComparison(comparison, lib1, lib2) {
+    const resultsDiv = document.getElementById('comparisonResults');
+    const contentDiv = document.getElementById('comparisonContent');
+    
+    contentDiv.innerHTML = `
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5>${lib1} vs ${lib2}</h5>
+            <button class="btn btn-outline-primary btn-sm" onclick="downloadComparison()">
+                <i class="fas fa-download"></i> Download
+            </button>
+        </div>
+        <div class="response-content">${comparison}</div>
+    `;
+    
+    resultsDiv.style.display = 'block';
+    resultsDiv.scrollIntoView({ behavior: 'smooth' });
+}
+
+function downloadComparison() {
+    const content = document.getElementById('comparisonContent').innerText;
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'library_comparison.txt';
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+}
+
+// Handle Enter key in input fields
+document.getElementById('library1').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        document.getElementById('library2').focus();
+    }
+});
+
+document.getElementById('library2').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        compareLibraries();
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,25 @@
+# Library Advisory System Requirements
+# Web Application with Azure OpenAI integration
+
+# Web Framework
+Flask>=2.3.0               # Web framework for Python
+Werkzeug>=2.3.0            # WSGI utility library
+
+# Azure OpenAI integration
+openai>=1.12.0             # Azure OpenAI client
+python-dotenv>=1.0.0       # Environment variable management
+requests>=2.25.0           # HTTP requests for API calls
+
+# Optional dependencies for enhanced functionality:
+colorama>=0.4.4            # For Windows color support
+rich>=10.0.0               # For enhanced terminal formatting (future enhancement)
+
+# Core Python modules used:
+# - os
+# - sys
+# - json
+# - re
+# - datetime
+# - typing
+# - dataclasses
+# - argparse

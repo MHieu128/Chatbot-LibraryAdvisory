@@ -1,0 +1,271 @@
+{% extends "base.html" %}
+
+{% block title %}Recommendations - Library Advisory System{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <h2><i class="fas fa-lightbulb text-primary"></i> Get Recommendations</h2>
+            <p class="text-muted">Get personalized library recommendations based on your requirements.</p>
+            
+            <div class="row mt-4">
+                <div class="col-md-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="fas fa-search"></i> Search for Recommendations</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label for="categoryInput" class="form-label">Category or Technology</label>
+                                <input type="text" id="categoryInput" class="form-control" 
+                                       placeholder="e.g., JavaScript frameworks, Python web frameworks, testing libraries"
+                                       onkeypress="handleKeyPress(event)">
+                            </div>
+                            <button class="btn btn-primary" onclick="getRecommendations()">
+                                <i class="fas fa-search"></i> Get Recommendations
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h6><i class="fas fa-info-circle"></i> Tips</h6>
+                        </div>
+                        <div class="card-body">
+                            <ul class="list-unstyled">
+                                <li><i class="fas fa-check text-success"></i> Be specific about your needs</li>
+                                <li><i class="fas fa-check text-success"></i> Mention your programming language</li>
+                                <li><i class="fas fa-check text-success"></i> Include your use case</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Popular Categories -->
+            <div class="mt-5">
+                <h4>Popular Categories</h4>
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="card library-card" onclick="quickRecommend('JavaScript frameworks')">
+                            <div class="card-body text-center">
+                                <i class="fas fa-code fa-2x text-warning mb-2"></i>
+                                <h6>JavaScript Frameworks</h6>
+                                <small class="text-muted">Frontend development</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card library-card" onclick="quickRecommend('Python web frameworks')">
+                            <div class="card-body text-center">
+                                <i class="fas fa-globe fa-2x text-success mb-2"></i>
+                                <h6>Python Web Frameworks</h6>
+                                <small class="text-muted">Backend development</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card library-card" onclick="quickRecommend('testing libraries')">
+                            <div class="card-body text-center">
+                                <i class="fas fa-vial fa-2x text-info mb-2"></i>
+                                <h6>Testing Libraries</h6>
+                                <small class="text-muted">Quality assurance</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card library-card" onclick="quickRecommend('database libraries')">
+                            <div class="card-body text-center">
+                                <i class="fas fa-database fa-2x text-danger mb-2"></i>
+                                <h6>Database Libraries</h6>
+                                <small class="text-muted">Data management</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Results Area -->
+            <div id="recommendationResults" class="mt-4" style="display: none;">
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-star"></i> Recommendations</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="recommendationContent"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Example Queries -->
+            <div class="mt-5">
+                <h4>Example Queries</h4>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-body">
+                                <h6 class="card-title">Specific Needs</h6>
+                                <ul class="list-unstyled">
+                                    <li class="mb-2">
+                                        <button class="btn btn-link p-0 text-start" 
+                                                onclick="setCategory('lightweight Python web framework')">
+                                            "I need a lightweight Python web framework"
+                                        </button>
+                                    </li>
+                                    <li class="mb-2">
+                                        <button class="btn btn-link p-0 text-start" 
+                                                onclick="setCategory('TypeScript compatible UI libraries')">
+                                            "TypeScript compatible UI libraries"
+                                        </button>
+                                    </li>
+                                    <li class="mb-2">
+                                        <button class="btn btn-link p-0 text-start" 
+                                                onclick="setCategory('Node.js testing frameworks')">
+                                            "Node.js testing frameworks"
+                                        </button>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-body">
+                                <h6 class="card-title">By Use Case</h6>
+                                <ul class="list-unstyled">
+                                    <li class="mb-2">
+                                        <button class="btn btn-link p-0 text-start" 
+                                                onclick="setCategory('enterprise grade frameworks')">
+                                            "Enterprise grade frameworks"
+                                        </button>
+                                    </li>
+                                    <li class="mb-2">
+                                        <button class="btn btn-link p-0 text-start" 
+                                                onclick="setCategory('startup friendly libraries')">
+                                            "Startup friendly libraries"
+                                        </button>
+                                    </li>
+                                    <li class="mb-2">
+                                        <button class="btn btn-link p-0 text-start" 
+                                                onclick="setCategory('mobile development frameworks')">
+                                            "Mobile development frameworks"
+                                        </button>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Loading Modal -->
+<div class="modal fade" id="loadingModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-body text-center">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <div class="mt-2">Finding recommendations...</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function handleKeyPress(event) {
+    if (event.key === 'Enter') {
+        getRecommendations();
+    }
+}
+
+function quickRecommend(category) {
+    document.getElementById('categoryInput').value = category;
+    getRecommendations();
+}
+
+function setCategory(category) {
+    document.getElementById('categoryInput').value = category;
+    document.getElementById('categoryInput').focus();
+}
+
+function getRecommendations() {
+    const category = document.getElementById('categoryInput').value.trim();
+    
+    if (!category) {
+        alert('Please enter a category or technology');
+        return;
+    }
+    
+    // Show loading modal
+    const loadingModal = new bootstrap.Modal(document.getElementById('loadingModal'));
+    loadingModal.show();
+    
+    // Send recommendation request
+    fetch('/get_recommendations', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ category: category })
+    })
+    .then(response => response.json())
+    .then(data => {
+        loadingModal.hide();
+        if (data.error) {
+            alert('Error: ' + data.error);
+        } else {
+            displayRecommendations(data.recommendations, data.category);
+        }
+    })
+    .catch(error => {
+        loadingModal.hide();
+        alert('Error getting recommendations');
+        console.error('Error:', error);
+    });
+}
+
+function displayRecommendations(recommendations, category) {
+    const resultsDiv = document.getElementById('recommendationResults');
+    const contentDiv = document.getElementById('recommendationContent');
+    
+    contentDiv.innerHTML = `
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5>Recommendations for: ${category}</h5>
+            <button class="btn btn-outline-primary btn-sm" onclick="downloadRecommendations()">
+                <i class="fas fa-download"></i> Download
+            </button>
+        </div>
+        <div class="response-content">${recommendations}</div>
+    `;
+    
+    resultsDiv.style.display = 'block';
+    resultsDiv.scrollIntoView({ behavior: 'smooth' });
+}
+
+function downloadRecommendations() {
+    const content = document.getElementById('recommendationContent').innerText;
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'library_recommendations.txt';
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+}
+
+// Auto-focus on input when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('categoryInput').focus();
+});
+</script>
+{% endblock %}

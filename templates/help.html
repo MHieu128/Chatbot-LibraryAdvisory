@@ -1,0 +1,294 @@
+{% extends "base.html" %}
+
+{% block title %}Help - Library Advisory System{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <h2><i class="fas fa-question-circle text-primary"></i> Help & Documentation</h2>
+            <p class="text-muted">Learn how to use the Library Advisory System effectively.</p>
+            
+            <!-- Navigation Tabs -->
+            <ul class="nav nav-tabs mt-4" id="helpTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="getting-started-tab" data-bs-toggle="tab" 
+                            data-bs-target="#getting-started" type="button" role="tab">
+                        <i class="fas fa-play"></i> Getting Started
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="commands-tab" data-bs-toggle="tab" 
+                            data-bs-target="#commands" type="button" role="tab">
+                        <i class="fas fa-terminal"></i> Commands
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="examples-tab" data-bs-toggle="tab" 
+                            data-bs-target="#examples" type="button" role="tab">
+                        <i class="fas fa-lightbulb"></i> Examples
+                    </button>
+                </li>
+                {% if ai_enabled %}
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="ai-features-tab" data-bs-toggle="tab" 
+                            data-bs-target="#ai-features" type="button" role="tab">
+                        <i class="fas fa-robot"></i> AI Features
+                    </button>
+                </li>
+                {% endif %}
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="faq-tab" data-bs-toggle="tab" 
+                            data-bs-target="#faq" type="button" role="tab">
+                        <i class="fas fa-question"></i> FAQ
+                    </button>
+                </li>
+            </ul>
+            
+            <!-- Tab Content -->
+            <div class="tab-content mt-3" id="helpTabContent">
+                <!-- Getting Started -->
+                <div class="tab-pane fade show active" id="getting-started" role="tabpanel">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title"><i class="fas fa-rocket"></i> Welcome to Library Advisory System</h5>
+                            <p>This system helps you evaluate and compare programming libraries and frameworks for your projects.</p>
+                            
+                            <h6 class="mt-4">Key Features:</h6>
+                            <ul>
+                                <li><strong>Library Analysis:</strong> Get detailed technical evaluations of any library</li>
+                                <li><strong>Side-by-side Comparison:</strong> Compare two libraries with comprehensive analysis</li>
+                                <li><strong>Smart Recommendations:</strong> Get personalized suggestions based on your requirements</li>
+                                <li><strong>Risk Assessment:</strong> Understand security, maintenance, and business risks</li>
+                                <li><strong>Cost Analysis:</strong> Evaluate licensing costs and total cost of ownership</li>
+                                {% if ai_enabled %}
+                                <li><strong>AI-Powered Insights:</strong> Get intelligent analysis using Azure OpenAI</li>
+                                {% endif %}
+                            </ul>
+                            
+                            <h6 class="mt-4">Quick Start:</h6>
+                            <ol>
+                                <li>Go to the <strong>Chat</strong> page to start asking questions</li>
+                                <li>Try typing "analyze React" or "compare Vue vs Angular"</li>
+                                <li>Use the <strong>Compare</strong> page for detailed library comparisons</li>
+                                <li>Visit <strong>Recommendations</strong> to find libraries for specific needs</li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Commands -->
+                <div class="tab-pane fade" id="commands" role="tabpanel">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title"><i class="fas fa-terminal"></i> Available Commands</h5>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6 class="text-primary">Analysis Commands</h6>
+                                    <div class="mb-3">
+                                        <code>analyze &lt;library&gt;</code>
+                                        <p class="small text-muted">Get detailed analysis of a specific library</p>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <code>compare &lt;lib1&gt; vs &lt;lib2&gt;</code>
+                                        <p class="small text-muted">Compare two libraries side by side</p>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <code>recommend &lt;category&gt;</code>
+                                        <p class="small text-muted">Get recommendations for a specific category</p>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <h6 class="text-primary">Utility Commands</h6>
+                                    <div class="mb-3">
+                                        <code>list</code>
+                                        <p class="small text-muted">Show all known libraries in the database</p>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <code>save</code>
+                                        <p class="small text-muted">Save conversation to a markdown file</p>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <code>help</code>
+                                        <p class="small text-muted">Display help information</p>
+                                    </div>
+                                    
+                                    {% if ai_enabled %}
+                                    <div class="mb-3">
+                                        <code>ai &lt;question&gt;</code>
+                                        <p class="small text-muted">Ask any technical question to the AI</p>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Examples -->
+                <div class="tab-pane fade" id="examples" role="tabpanel">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title"><i class="fas fa-lightbulb"></i> Example Queries</h5>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6 class="text-primary">Library Analysis</h6>
+                                    <ul class="list-unstyled">
+                                        <li class="mb-2"><code>analyze React</code></li>
+                                        <li class="mb-2"><code>tell me about Django</code></li>
+                                        <li class="mb-2"><code>evaluate Vue.js for enterprise use</code></li>
+                                        <li class="mb-2"><code>what is Express.js</code></li>
+                                    </ul>
+                                    
+                                    <h6 class="text-primary mt-4">Library Comparison</h6>
+                                    <ul class="list-unstyled">
+                                        <li class="mb-2"><code>compare React vs Vue.js</code></li>
+                                        <li class="mb-2"><code>React vs Angular for large applications</code></li>
+                                        <li class="mb-2"><code>Django vs Flask for API development</code></li>
+                                    </ul>
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <h6 class="text-primary">Recommendations</h6>
+                                    <ul class="list-unstyled">
+                                        <li class="mb-2"><code>recommend JavaScript frameworks</code></li>
+                                        <li class="mb-2"><code>best Python web frameworks</code></li>
+                                        <li class="mb-2"><code>suggest testing libraries for Node.js</code></li>
+                                        <li class="mb-2"><code>find alternatives to jQuery</code></li>
+                                    </ul>
+                                    
+                                    <h6 class="text-primary mt-4">Specific Requirements</h6>
+                                    <ul class="list-unstyled">
+                                        <li class="mb-2"><code>I need a lightweight Python web framework</code></li>
+                                        <li class="mb-2"><code>What's the best database ORM for Python?</code></li>
+                                        <li class="mb-2"><code>Recommend UI libraries with TypeScript support</code></li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- AI Features -->
+                {% if ai_enabled %}
+                <div class="tab-pane fade" id="ai-features" role="tabpanel">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title"><i class="fas fa-robot"></i> AI-Powered Features</h5>
+                            <p>The system is enhanced with Azure OpenAI for intelligent analysis and recommendations.</p>
+                            
+                            <h6 class="text-primary">AI Capabilities</h6>
+                            <ul>
+                                <li><strong>Intelligent Analysis:</strong> Get deep insights beyond basic information</li>
+                                <li><strong>Context-Aware Responses:</strong> AI considers your conversation history</li>
+                                <li><strong>Technical Expertise:</strong> Advanced knowledge of software architecture and best practices</li>
+                                <li><strong>Current Trends:</strong> Understanding of modern development practices</li>
+                            </ul>
+                            
+                            <h6 class="text-primary mt-4">AI Command Examples</h6>
+                            <ul class="list-unstyled">
+                                <li class="mb-2"><code>ai What are the security implications of using React?</code></li>
+                                <li class="mb-2"><code>ai How do I migrate from Angular to React?</code></li>
+                                <li class="mb-2"><code>ai Best practices for choosing a frontend framework</code></li>
+                                <li class="mb-2"><code>ai Latest trends in JavaScript libraries</code></li>
+                                <li class="mb-2"><code>ai Performance comparison between Django and FastAPI</code></li>
+                            </ul>
+                            
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle"></i>
+                                <strong>Note:</strong> AI responses are enhanced with real-time analysis and should be verified for your specific use case.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                
+                <!-- FAQ -->
+                <div class="tab-pane fade" id="faq" role="tabpanel">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title"><i class="fas fa-question"></i> Frequently Asked Questions</h5>
+                            
+                            <div class="accordion" id="faqAccordion">
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header" id="faq1">
+                                        <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#faq1-content">
+                                            How accurate is the library information?
+                                        </button>
+                                    </h2>
+                                    <div id="faq1-content" class="accordion-collapse collapse show" data-bs-parent="#faqAccordion">
+                                        <div class="accordion-body">
+                                            The system provides analysis based on general knowledge and patterns. Always verify current information and test libraries in your specific environment before making decisions.
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header" id="faq2">
+                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq2-content">
+                                            Can I add new libraries to the database?
+                                        </button>
+                                    </h2>
+                                    <div id="faq2-content" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                                        <div class="accordion-body">
+                                            Currently, the system works with a predefined set of popular libraries. However, you can ask about any library and get analysis based on available knowledge.
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header" id="faq3">
+                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq3-content">
+                                            How do I save my analysis results?
+                                        </button>
+                                    </h2>
+                                    <div id="faq3-content" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                                        <div class="accordion-body">
+                                            Use the "Save" button in the chat interface or type "save" in the chat. This will create a markdown file with your conversation history.
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header" id="faq4">
+                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq4-content">
+                                            What programming languages are supported?
+                                        </button>
+                                    </h2>
+                                    <div id="faq4-content" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                                        <div class="accordion-body">
+                                            The system can provide analysis for libraries across all major programming languages including JavaScript, Python, Java, C#, PHP, Ruby, Go, Rust, and more.
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                {% if ai_enabled %}
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header" id="faq5">
+                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq5-content">
+                                            How does the AI enhancement work?
+                                        </button>
+                                    </h2>
+                                    <div id="faq5-content" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                                        <div class="accordion-body">
+                                            The system uses Azure OpenAI to provide intelligent analysis, context-aware responses, and enhanced recommendations based on your specific questions and conversation history.
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
