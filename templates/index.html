@@ -66,9 +66,9 @@
             
             <!-- Input Area -->
             <div class="input-group">
-                <input type="text" id="messageInput" class="form-control" 
+                <textarea id="messageInput" class="form-control chat-input" rows="1"
                        placeholder="Ask about libraries, compare frameworks, or get recommendations..." 
-                       onkeypress="handleKeyPress(event)">
+                       onkeypress="handleKeyPress(event)"></textarea>
                 <button class="btn btn-primary" type="button" onclick="sendMessage()">
                     <i class="fas fa-paper-plane"></i> Send
                 </button>
@@ -201,7 +201,14 @@ function addMessage(content, type, timestamp) {
     }
     
     chatContainer.appendChild(messageDiv);
-    chatContainer.scrollTop = chatContainer.scrollHeight;
+    
+    // Smooth scroll to bottom
+    setTimeout(() => {
+        chatContainer.scrollTo({
+            top: chatContainer.scrollHeight,
+            behavior: 'smooth'
+        });
+    }, 100);
 }
 
 function escapeHtml(text) {
@@ -265,7 +272,32 @@ function saveConversation() {
 
 // Auto-focus on input when page loads
 document.addEventListener('DOMContentLoaded', function() {
-    document.getElementById('messageInput').focus();
+    const input = document.getElementById('messageInput');
+    input.focus();
+    
+    // Scroll to bottom of chat on page load
+    const chatContainer = document.getElementById('chatContainer');
+    if (chatContainer) {
+        setTimeout(() => {
+            chatContainer.scrollTo({
+                top: chatContainer.scrollHeight,
+                behavior: 'smooth'
+            });
+        }, 300);
+    }
+    
+    // Auto-resize textarea
+    input.addEventListener('input', function() {
+        this.style.height = 'auto';
+        this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+    });
+    
+    // Reset height when message is sent
+    const originalSendMessage = sendMessage;
+    sendMessage = function() {
+        originalSendMessage();
+        input.style.height = 'auto';
+    };
 });
 </script>
 {% endblock %}
