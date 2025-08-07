@@ -24,17 +24,185 @@ except ImportError as e:
     print(f"Error: {e}")
     AZURE_OPENAI_AVAILABLE = False
 
-# Color codes for terminal output
+# Modern color scheme for terminal output
 class Colors:
-    HEADER = '\033[95m'
-    OKBLUE = '\033[94m'
-    OKCYAN = '\033[96m'
-    OKGREEN = '\033[92m'
-    WARNING = '\033[93m'
-    FAIL = '\033[91m'
-    ENDC = '\033[0m'
+    # Primary colors - Modern and accessible
+    PRIMARY = '\033[38;5;33m'      # Modern blue
+    SUCCESS = '\033[38;5;46m'      # Bright green
+    WARNING = '\033[38;5;220m'     # Amber yellow
+    ERROR = '\033[38;5;196m'       # Bright red
+    INFO = '\033[38;5;117m'        # Light cyan
+    
+    # Semantic colors
+    HEADER = '\033[38;5;99m'       # Purple
+    ACCENT = '\033[38;5;208m'      # Orange
+    MUTED = '\033[38;5;244m'       # Gray
+    
+    # Text styles
     BOLD = '\033[1m'
+    DIM = '\033[2m'
+    ITALIC = '\033[3m'
     UNDERLINE = '\033[4m'
+    STRIKETHROUGH = '\033[9m'
+    
+    # Background colors
+    BG_SUCCESS = '\033[48;5;46m'
+    BG_WARNING = '\033[48;5;220m'
+    BG_ERROR = '\033[48;5;196m'
+    BG_INFO = '\033[48;5;117m'
+    
+    # Reset
+    ENDC = '\033[0m'
+    RESET = '\033[0m'
+    
+    # Legacy compatibility
+    OKBLUE = '\033[38;5;33m'
+    OKCYAN = '\033[38;5;117m'
+    OKGREEN = '\033[38;5;46m'
+    FAIL = '\033[38;5;196m'
+
+
+class ModernFormatter:
+    """Modern terminal formatter with enhanced visual design"""
+    
+    @staticmethod
+    def get_terminal_width() -> int:
+        """Get terminal width, default to 80 if unable to detect"""
+        try:
+            import shutil
+            return shutil.get_terminal_size().columns
+        except:
+            return 80
+    
+    @staticmethod
+    def create_box(content: str, title: str = "", style: str = "single") -> str:
+        """Create a modern box around content"""
+        width = min(ModernFormatter.get_terminal_width() - 4, 100)
+        
+        # Box drawing characters
+        if style == "double":
+            top_left, top_right = "╔", "╗"
+            bottom_left, bottom_right = "╚", "╝"
+            horizontal, vertical = "═", "║"
+            title_left, title_right = "╡", "╞"
+        else:  # single
+            top_left, top_right = "┌", "┐"
+            bottom_left, bottom_right = "└", "┘"
+            horizontal, vertical = "─", "│"
+            title_left, title_right = "┤", "├"
+        
+        lines = content.split('\n')
+        
+        # Top border
+        if title:
+            title_len = len(title) + 2
+            remaining = width - title_len - 2
+            left_border = horizontal * (remaining // 2)
+            right_border = horizontal * (remaining - remaining // 2)
+            top = f"{top_left}{left_border}{title_left} {title} {title_right}{right_border}{top_right}"
+        else:
+            top = f"{top_left}{horizontal * width}{top_right}"
+        
+        # Content lines
+        content_lines = []
+        for line in lines:
+            clean_line = ModernFormatter.strip_ansi(line)
+            if len(clean_line) > width - 2:
+                # Word wrap
+                words = clean_line.split()
+                current_line = ""
+                for word in words:
+                    if len(current_line + word + " ") <= width - 2:
+                        current_line += word + " "
+                    else:
+                        if current_line:
+                            content_lines.append(f"{vertical} {current_line.ljust(width-2)} {vertical}")
+                        current_line = word + " "
+                if current_line:
+                    content_lines.append(f"{vertical} {current_line.ljust(width-2)} {vertical}")
+            else:
+                content_lines.append(f"{vertical} {line.ljust(width-2)} {vertical}")
+        
+        # Bottom border
+        bottom = f"{bottom_left}{horizontal * width}{bottom_right}"
+        
+        return f"{top}\n" + "\n".join(content_lines) + f"\n{bottom}"
+    
+    @staticmethod
+    def strip_ansi(text: str) -> str:
+        """Remove ANSI escape sequences from text"""
+        import re
+        ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
+        return ansi_escape.sub('', text)
+    
+    @staticmethod
+    def create_badge(text: str, color: str = Colors.PRIMARY, bg_color: str = "") -> str:
+        """Create a modern badge"""
+        if bg_color:
+            return f"{bg_color}{Colors.BOLD} {text} {Colors.RESET}"
+        return f"{color}{Colors.BOLD}[{text}]{Colors.RESET}"
+    
+    @staticmethod
+    def create_progress_bar(value: int, max_value: int = 100, width: int = 20) -> str:
+        """Create a visual progress bar"""
+        percentage = min(value / max_value, 1.0)
+        filled = int(width * percentage)
+        bar = "█" * filled + "░" * (width - filled)
+        return f"{Colors.SUCCESS}{bar}{Colors.RESET} {value}%"
+    
+    @staticmethod
+    def create_card(title: str, content: str, icon: str = "", color: str = Colors.PRIMARY) -> str:
+        """Create a modern card layout"""
+        width = min(ModernFormatter.get_terminal_width() - 4, 80)
+        
+        # Header
+        header_icon = f"{icon} " if icon else ""
+        header = f"{color}{Colors.BOLD}{header_icon}{title}{Colors.RESET}"
+        
+        # Separator
+        separator = f"{color}{'─' * width}{Colors.RESET}"
+        
+        # Content
+        content_lines = content.split('\n')
+        formatted_content = []
+        for line in content_lines:
+            if line.strip():
+                formatted_content.append(f"  {line}")
+            else:
+                formatted_content.append("")
+        
+        return f"{header}\n{separator}\n" + "\n".join(formatted_content) + "\n"
+
+
+class Icons:
+    """Modern Unicode icons for better visual design"""
+    LIBRARY = "📚"
+    ANALYSIS = "🔍"
+    SUCCESS = "✅"
+    WARNING = "⚠️"
+    ERROR = "❌"
+    INFO = "ℹ️"
+    STAR = "⭐"
+    ARROW_RIGHT = "→"
+    ARROW_DOWN = "↓"
+    BULLET = "•"
+    CHECK = "✓"
+    CROSS = "✗"
+    GEAR = "⚙️"
+    SHIELD = "🛡️"
+    MONEY = "💰"
+    CHART = "📊"
+    TARGET = "🎯"
+    ROCKET = "🚀"
+    LIGHTBULB = "💡"
+    COMPARE = "⚖️"
+    DOWNLOAD = "📥"
+    LICENSE = "📋"
+    SECURITY = "🔒"
+    PERFORMANCE = "⚡"
+    COMMUNITY = "👥"
+    MAINTENANCE = "🔧"
+    RISK = "⚠️"
 
 @dataclass
 class LibraryAnalysis:
@@ -687,38 +855,82 @@ When users ask for library recommendations:
         return basic_analysis
 
     def display_welcome(self):
-        """Display welcome message and instructions"""
-        print(f"\n{Colors.HEADER}{Colors.BOLD}🔍 Library Advisory System{Colors.ENDC}")
-        print(f"{Colors.HEADER}{'='*50}{Colors.ENDC}")
-        print(f"{Colors.OKBLUE}Welcome to the comprehensive library evaluation and recommendation system!{Colors.ENDC}")
+        """Display modern welcome message with enhanced design"""
+        width = ModernFormatter.get_terminal_width()
         
-        # Show AI status
+        # Main header with gradient effect
+        print(f"\n{Colors.HEADER}{Colors.BOLD}")
+        print("┌" + "─" * (width - 2) + "┐")
+        print(f"│{' ' * ((width - 28) // 2)}{Icons.LIBRARY} Library Advisory System {Icons.ANALYSIS}{' ' * ((width - 28) // 2)}│")
+        print("└" + "─" * (width - 2) + "┘")
+        print(f"{Colors.RESET}\n")
+        
+        # AI Status Card
+        ai_status = "ENABLED" if self.use_ai else "DISABLED"
+        ai_icon = "🤖" if self.use_ai else "🔧"
+        ai_color = Colors.SUCCESS if self.use_ai else Colors.WARNING
+        status_text = f"{ai_icon} AI-Enhanced Analysis: {ai_status}"
         if self.use_ai:
-            print(f"{Colors.OKGREEN}🤖 AI-Enhanced Analysis: ENABLED (Azure OpenAI){Colors.ENDC}")
+            status_text += " (Azure OpenAI)"
         else:
-            print(f"{Colors.WARNING}🤖 AI-Enhanced Analysis: DISABLED (Basic mode){Colors.ENDC}")
-        print()
+            status_text += " (Basic mode)"
         
-        print(f"{Colors.OKCYAN}I can help you with:{Colors.ENDC}")
-        print(f"  • {Colors.OKGREEN}Library analysis and comparison{Colors.ENDC}")
-        print(f"  • {Colors.OKGREEN}Technical evaluation and recommendations{Colors.ENDC}")
-        print(f"  • {Colors.OKGREEN}Cost and licensing analysis{Colors.ENDC}")
-        print(f"  • {Colors.OKGREEN}Risk assessment and security evaluation{Colors.ENDC}")
-        print(f"  • {Colors.OKGREEN}Finding alternatives and migration paths{Colors.ENDC}")
-        if self.use_ai:
-            print(f"  • {Colors.OKGREEN}AI-powered intelligent insights and recommendations{Colors.ENDC}")
-        print()
+        print(ModernFormatter.create_card(
+            "System Status",
+            status_text,
+            Icons.INFO,
+            ai_color
+        ))
         
-        print(f"{Colors.WARNING}Commands:{Colors.ENDC}")
-        print(f"  • Type {Colors.BOLD}'help'{Colors.ENDC} for detailed instructions")
-        print(f"  • Type {Colors.BOLD}'list'{Colors.ENDC} to see available libraries")
-        print(f"  • Type {Colors.BOLD}'compare <lib1> vs <lib2>'{Colors.ENDC} to compare libraries")
-        print(f"  • Type {Colors.BOLD}'analyze <library>'{Colors.ENDC} for detailed analysis")
-        print(f"  • Type {Colors.BOLD}'recommend <category>'{Colors.ENDC} for recommendations")
+        # Capabilities Section
+        capabilities = [
+            f"{Icons.ANALYSIS} Library analysis and comparison",
+            f"{Icons.GEAR} Technical evaluation and recommendations", 
+            f"{Icons.MONEY} Cost and licensing analysis",
+            f"{Icons.SHIELD} Risk assessment and security evaluation",
+            f"{Icons.COMPARE} Finding alternatives and migration paths"
+        ]
+        
         if self.use_ai:
-            print(f"  • Type {Colors.BOLD}'ai <your question>'{Colors.ENDC} for AI-powered analysis")
-        print(f"  • Type {Colors.BOLD}'save'{Colors.ENDC} to save conversation to markdown file")
-        print(f"  • Type {Colors.BOLD}'exit' or 'quit'{Colors.ENDC} to leave\n")
+            capabilities.append(f"{Icons.LIGHTBULB} AI-powered intelligent insights")
+        
+        capabilities_text = "\n".join(capabilities)
+        print(ModernFormatter.create_card(
+            "I can help you with",
+            capabilities_text,
+            Icons.ROCKET,
+            Colors.PRIMARY
+        ))
+        
+        # Commands Section
+        commands = [
+            f"{Colors.ACCENT}help{Colors.RESET} - Detailed instructions and examples",
+            f"{Colors.ACCENT}list{Colors.RESET} - Browse available libraries",
+            f"{Colors.ACCENT}analyze <library>{Colors.RESET} - Detailed library analysis",
+            f"{Colors.ACCENT}compare <lib1> vs <lib2>{Colors.RESET} - Side-by-side comparison",
+            f"{Colors.ACCENT}recommend <category>{Colors.RESET} - Get recommendations"
+        ]
+        
+        if self.use_ai:
+            commands.append(f"{Colors.ACCENT}ai <question>{Colors.RESET} - AI-powered analysis")
+        
+        commands.extend([
+            f"{Colors.ACCENT}save{Colors.RESET} - Export conversation to markdown",
+            f"{Colors.ACCENT}exit{Colors.RESET} or {Colors.ACCENT}quit{Colors.RESET} - Exit application"
+        ])
+        
+        commands_text = "\n".join(commands)
+        print(ModernFormatter.create_card(
+            "Available Commands",
+            commands_text,
+            Icons.GEAR,
+            Colors.INFO
+        ))
+        
+        # Quick start tip
+        print(f"{Colors.MUTED}{Colors.ITALIC}")
+        print(f"💡 Quick start: Try 'analyze React' or 'compare Vue.js vs Angular'")
+        print(f"{Colors.RESET}\n")
 
     def display_help(self):
         """Display detailed help information"""
@@ -779,10 +991,10 @@ Always verify current information and test libraries in your specific environmen
         print(help_text)
 
     def list_known_libraries(self):
-        """Display list of known libraries"""
-        print(f"\n{Colors.HEADER}{Colors.BOLD}📚 Known Libraries Database{Colors.ENDC}")
-        print(f"{Colors.HEADER}{'='*40}{Colors.ENDC}\n")
+        """Display modern styled list of known libraries"""
+        header = f"\n{Colors.HEADER}{Colors.BOLD}{Icons.LIBRARY} Known Libraries Database{Colors.RESET}\n"
         
+        # Group libraries by category
         categories = {}
         for lib_key, lib_info in self.known_libraries.items():
             category = lib_info.get('category', 'Other')
@@ -790,11 +1002,69 @@ Always verify current information and test libraries in your specific environmen
                 categories[category] = []
             categories[category].append(lib_info)
         
+        # Create cards for each category
+        category_cards = []
         for category, libs in categories.items():
-            print(f"{Colors.OKCYAN}{Colors.BOLD}{category}:{Colors.ENDC}")
+            
+            # Create library list for this category
+            lib_items = []
             for lib in libs:
-                print(f"  • {Colors.OKGREEN}{lib['name']}{Colors.ENDC} ({lib['language']}) - {lib['description']}")
-            print()
+                popularity_badge = ModernFormatter.create_badge(
+                    lib['popularity'], 
+                    Colors.SUCCESS if 'high' in lib['popularity'].lower() else Colors.INFO
+                )
+                
+                lib_line = (f"{Icons.ARROW_RIGHT} {Colors.BOLD}{lib['name']}{Colors.RESET} "
+                           f"({Colors.ACCENT}{lib['language']}{Colors.RESET}) "
+                           f"{popularity_badge}")
+                lib_items.append(lib_line)
+                lib_items.append(f"   {Colors.DIM}{lib['description']}{Colors.RESET}")
+                lib_items.append("")  # Empty line for spacing
+            
+            # Remove last empty line
+            if lib_items and lib_items[-1] == "":
+                lib_items.pop()
+                
+            category_content = "\n".join(lib_items)
+            
+            category_cards.append(ModernFormatter.create_card(
+                f"{category} ({len(libs)} libraries)",
+                category_content,
+                Icons.GEAR,
+                Colors.PRIMARY
+            ))
+        
+        # Quick actions
+        quick_actions = f"""
+{Icons.ANALYSIS} {Colors.ACCENT}analyze <library>{Colors.RESET} - Detailed analysis of any library
+{Icons.COMPARE} {Colors.ACCENT}compare <lib1> vs <lib2>{Colors.RESET} - Compare two libraries
+{Icons.TARGET} {Colors.ACCENT}recommend <category>{Colors.RESET} - Get category recommendations
+        """.strip()
+        
+        actions_card = ModernFormatter.create_card(
+            "What's next?",
+            quick_actions,
+            Icons.LIGHTBULB,
+            Colors.INFO
+        )
+        
+        # Database stats
+        stats_content = f"""
+{Icons.LIBRARY} Total Libraries: {Colors.ACCENT}{len(self.known_libraries)}{Colors.RESET}
+{Icons.GEAR} Categories: {Colors.ACCENT}{len(categories)}{Colors.RESET}
+{Icons.COMMUNITY} AI Enhancement: {Colors.SUCCESS if self.use_ai else Colors.WARNING}{'Enabled' if self.use_ai else 'Disabled'}{Colors.RESET}
+        """.strip()
+        
+        stats_card = ModernFormatter.create_card(
+            "Database Statistics",
+            stats_content,
+            Icons.CHART,
+            Colors.MUTED
+        )
+        
+        # Combine all parts
+        result = header + stats_card + "\n".join(category_cards) + actions_card
+        print(result)
 
     def analyze_library(self, library_name: str) -> str:
         """Analyze a specific library and return detailed analysis"""
@@ -824,39 +1094,94 @@ Always verify current information and test libraries in your specific environmen
         return basic_analysis
 
     def _generate_detailed_analysis(self, lib_info: Dict) -> str:
-        """Generate detailed analysis for a known library"""
+        """Generate modern detailed analysis for a known library"""
         name = lib_info['name']
-        analysis = f"""
-{Colors.HEADER}{Colors.BOLD}# Library Analysis: {name}{Colors.ENDC}
+        
+        # Header with modern styling
+        header = f"\n{Colors.HEADER}{Colors.BOLD}{Icons.ANALYSIS} Library Analysis: {name}{Colors.RESET}\n"
+        
+        # Overview card
+        overview_content = f"""
+{Colors.PRIMARY}{lib_info['description']}{Colors.RESET}
 
-{Colors.OKCYAN}## Overview{Colors.ENDC}
-{lib_info['description']} ({lib_info['language']})
-Category: {lib_info['category']}
-License: {lib_info['license']}
-Popularity: {lib_info['popularity']}
-
-{Colors.OKGREEN}## Advantages ✅{Colors.ENDC}
-{self._get_advantages(lib_info)}
-
-{Colors.FAIL}## Disadvantages ❌{Colors.ENDC}
-{self._get_disadvantages(lib_info)}
-
-{Colors.WARNING}## Cost & Licensing 💰{Colors.ENDC}
-{self._get_cost_analysis(lib_info)}
-
-{Colors.FAIL}## Risk Assessment ⚠️{Colors.ENDC}
-{self._get_risk_assessment(lib_info)}
-
-{Colors.OKBLUE}## Technical Considerations 🔧{Colors.ENDC}
-{self._get_technical_considerations(lib_info)}
-
-{Colors.OKCYAN}## Similar Libraries Comparison 📊{Colors.ENDC}
-{self._get_comparison_table(lib_info)}
-
-{Colors.OKGREEN}## Recommendations 🎯{Colors.ENDC}
-{self._get_recommendations(lib_info)}
-"""
-        return analysis
+{Icons.GEAR} Language: {Colors.ACCENT}{lib_info['language']}{Colors.RESET}
+{Icons.LIBRARY} Category: {Colors.ACCENT}{lib_info['category']}{Colors.RESET}
+{Icons.LICENSE} License: {Colors.ACCENT}{lib_info['license']}{Colors.RESET}
+{Icons.STAR} Popularity: {Colors.ACCENT}{lib_info['popularity']}{Colors.RESET}
+        """.strip()
+        
+        overview_card = ModernFormatter.create_card(
+            "Overview",
+            overview_content,
+            Icons.INFO,
+            Colors.PRIMARY
+        )
+        
+        # Advantages card
+        advantages_content = self._get_modern_advantages(lib_info)
+        advantages_card = ModernFormatter.create_card(
+            "Advantages",
+            advantages_content,
+            Icons.SUCCESS,
+            Colors.SUCCESS
+        )
+        
+        # Disadvantages card
+        disadvantages_content = self._get_modern_disadvantages(lib_info)
+        disadvantages_card = ModernFormatter.create_card(
+            "Disadvantages", 
+            disadvantages_content,
+            Icons.WARNING,
+            Colors.WARNING
+        )
+        
+        # Cost & Licensing card
+        cost_content = self._get_modern_cost_analysis(lib_info)
+        cost_card = ModernFormatter.create_card(
+            "Cost & Licensing",
+            cost_content,
+            Icons.MONEY,
+            Colors.ACCENT
+        )
+        
+        # Risk Assessment card
+        risk_content = self._get_modern_risk_assessment(lib_info)
+        risk_card = ModernFormatter.create_card(
+            "Risk Assessment",
+            risk_content,
+            Icons.SHIELD,
+            Colors.ERROR
+        )
+        
+        # Technical Considerations card
+        technical_content = self._get_modern_technical_considerations(lib_info)
+        technical_card = ModernFormatter.create_card(
+            "Technical Considerations",
+            technical_content,
+            Icons.GEAR,
+            Colors.INFO
+        )
+        
+        # Comparison table
+        comparison_content = self._get_modern_comparison_table(lib_info)
+        comparison_card = ModernFormatter.create_card(
+            "Similar Libraries Comparison",
+            comparison_content,
+            Icons.COMPARE,
+            Colors.PRIMARY
+        )
+        
+        # Recommendations card
+        recommendations_content = self._get_modern_recommendations(lib_info)
+        recommendations_card = ModernFormatter.create_card(
+            "Recommendations",
+            recommendations_content,
+            Icons.TARGET,
+            Colors.SUCCESS
+        )
+        
+        return (header + overview_card + advantages_card + disadvantages_card + 
+                cost_card + risk_card + technical_card + comparison_card + recommendations_card)
 
     def _generate_general_analysis(self, library_name: str) -> str:
         """Generate general analysis template for unknown libraries"""
@@ -892,147 +1217,288 @@ Popularity: {lib_info['popularity']}
 and consider asking about specific aspects you'd like me to analyze.
 """
 
-    def _get_advantages(self, lib_info: Dict) -> str:
-        """Generate advantages based on library info"""
+    def _get_modern_advantages(self, lib_info: Dict) -> str:
+        """Generate modern styled advantages"""
         name = lib_info['name']
         category = lib_info['category']
         
         advantages_map = {
             "React": [
-                "Massive community support and ecosystem",
-                "Virtual DOM for efficient rendering",
-                "Component-based architecture promotes reusability",
-                "Excellent developer tools and debugging support",
-                "Strong TypeScript integration",
-                "Backed by Meta (Facebook) ensuring long-term support"
+                ("Community Support", "Massive ecosystem with 200M+ weekly downloads"),
+                ("Performance", "Virtual DOM enables efficient rendering and updates"),
+                ("Architecture", "Component-based design promotes code reusability"),
+                ("Developer Experience", "Excellent tools like React DevTools and Hot Reload"),
+                ("TypeScript", "First-class TypeScript support and type definitions"),
+                ("Enterprise Ready", "Backed by Meta with guaranteed long-term support")
             ],
             "Vue.js": [
-                "Gentle learning curve and excellent documentation",
-                "Progressive adoption - can be integrated incrementally",
-                "Excellent performance with efficient reactivity system",
-                "Strong template syntax and single-file components",
-                "Great developer experience with Vue CLI and dev tools",
-                "Smaller bundle size compared to React/Angular"
+                ("Learning Curve", "Gentle progression from beginner to advanced concepts"),
+                ("Adoption", "Progressive framework - integrate incrementally"),
+                ("Performance", "Efficient reactivity system with proxy-based observation"),
+                ("Developer Experience", "Intuitive template syntax and SFC architecture"),
+                ("Tooling", "Vue CLI, Vite integration, and excellent dev tools"),
+                ("Bundle Size", "Smaller footprint compared to React/Angular")
             ],
             "Django": [
-                "Batteries-included framework with ORM, admin panel, auth",
-                "Excellent security features built-in",
-                "Rapid development with DRY principle",
-                "Scalable architecture suitable for large applications",
-                "Strong community and extensive third-party packages",
-                "Excellent documentation and learning resources"
+                ("Batteries Included", "ORM, admin panel, authentication out of the box"),
+                ("Security", "Built-in protection against CSRF, XSS, SQL injection"),
+                ("Rapid Development", "DRY principle enables fast prototyping"),
+                ("Scalability", "Powers Instagram, Pinterest, and other large platforms"),
+                ("Community", "Extensive package ecosystem and active community"),
+                ("Documentation", "Comprehensive guides and best practices")
             ],
             "Flask": [
-                "Lightweight and minimalist design",
-                "High flexibility and customization options",
-                "Easy to learn and quick to prototype",
-                "Excellent for microservices architecture",
-                "Strong ecosystem of extensions",
-                "Full control over application structure"
+                ("Minimalism", "Lightweight core with modular extensions"),
+                ("Flexibility", "Full control over application architecture"),
+                ("Learning", "Simple to understand and quick to prototype"),
+                ("Microservices", "Perfect for distributed service architectures"),
+                ("Ecosystem", "Rich extension library for specific needs"),
+                ("Customization", "Zero opinions on project structure")
             ],
             "Express.js": [
-                "Minimalist and unopinionated framework",
-                "Excellent performance and scalability",
-                "Huge middleware ecosystem",
-                "Easy integration with databases and services",
-                "Strong community support",
-                "Perfect for RESTful APIs and microservices"
+                ("Performance", "Fast, lightweight with minimal overhead"),
+                ("Middleware", "Extensive middleware ecosystem for all needs"),
+                ("APIs", "Excellent for RESTful services and GraphQL"),
+                ("Integration", "Seamless database and service integration"),
+                ("Community", "Huge Node.js ecosystem support"),
+                ("Microservices", "Industry standard for Node.js microservices")
             ]
         }
         
         advantages = advantages_map.get(name, [
-            f"Popular choice in {category} category",
-            f"Good community support for {lib_info['language']} ecosystem",
-            f"Open source with {lib_info['license']} license"
+            ("Popularity", f"Established choice in {category} category"),
+            ("Community", f"Active {lib_info['language']} ecosystem support"), 
+            ("License", f"Open source with {lib_info['license']} license")
         ])
         
-        return "\n".join(f"  • {adv}" for adv in advantages)
+        formatted_advantages = []
+        for title, description in advantages:
+            formatted_advantages.append(f"{Icons.CHECK} {Colors.BOLD}{title}{Colors.RESET}: {description}")
+        
+        return "\n".join(formatted_advantages)
 
-    def _get_disadvantages(self, lib_info: Dict) -> str:
-        """Generate disadvantages based on library info"""
+    def _get_modern_disadvantages(self, lib_info: Dict) -> str:
+        """Generate modern styled disadvantages"""
         name = lib_info['name']
         
         disadvantages_map = {
             "React": [
-                "Steep learning curve for beginners",
-                "Rapid ecosystem changes can cause fragmentation",
-                "JSX syntax might be confusing initially",
-                "Requires additional libraries for full functionality",
-                "Large bundle size for simple applications",
-                "Complex build setup and tooling requirements"
+                ("Learning Curve", "Complex concepts like hooks, context, and state management"),
+                ("Ecosystem Fragmentation", "Too many choices can lead to decision paralysis"),
+                ("JSX Syntax", "Additional learning overhead for traditional developers"),
+                ("Dependencies", "Requires multiple libraries for complete functionality"),
+                ("Bundle Size", "Can become large without proper optimization"),
+                ("Build Complexity", "Complex toolchain setup and configuration")
             ],
             "Vue.js": [
-                "Smaller ecosystem compared to React",
-                "Less job market demand than React/Angular",
-                "Potential concerns about long-term backing",
-                "Limited resources for complex enterprise scenarios",
-                "TypeScript support, while good, not as mature as React"
+                ("Market Share", "Smaller job market compared to React ecosystem"),
+                ("Enterprise Adoption", "Less widespread in large enterprise environments"),
+                ("Backing Concerns", "Single maintainer dependency vs corporate backing"),
+                ("Resources", "Fewer third-party resources and tutorials"),
+                ("TypeScript", "While good, TypeScript support trails React")
             ],
             "Django": [
-                "Can be overkill for simple applications",
-                "Monolithic structure may limit flexibility",
-                "ORM can become complex for advanced queries",
-                "Deployment can be complex for beginners",
-                "Less suitable for real-time applications",
-                "Template system limitations compared to modern alternatives"
+                ("Overkill", "Heavy for simple applications and APIs"),
+                ("Monolithic", "Opinionated structure limits architectural flexibility"),
+                ("ORM Limitations", "Complex queries can become cumbersome"),
+                ("Deployment", "More complex setup compared to simpler frameworks"),
+                ("Real-time", "Not ideal for WebSocket/real-time applications"),
+                ("Templates", "Template system less flexible than modern alternatives")
             ],
             "Flask": [
-                "Requires more setup and configuration decisions",
-                "No built-in ORM or admin interface",
-                "Can lead to inconsistent project structures",
-                "Security features need manual implementation",
-                "May require more third-party dependencies",
-                "Learning curve for proper application architecture"
+                ("Setup Overhead", "Requires many decisions and manual configuration"),
+                ("No Batteries", "No built-in ORM, admin, or authentication"),
+                ("Structure Variance", "Can lead to inconsistent project architectures"),
+                ("Security", "Manual implementation of security features required"),
+                ("Dependencies", "May require numerous third-party packages"),
+                ("Architecture", "Learning curve for proper application design")
             ],
             "Express.js": [
-                "Minimalist approach requires more manual setup",
-                "No built-in security features",
-                "Callback hell potential (though mitigated by async/await)",
-                "Requires careful error handling implementation",
-                "No opinionated structure can lead to inconsistency",
-                "Security vulnerabilities if not properly configured"
+                ("Minimalism", "Requires extensive setup for production applications"),
+                ("Security", "No built-in security features or best practices"),
+                ("Async Complexity", "Callback management and error handling challenges"),
+                ("Error Handling", "Manual implementation of robust error management"),
+                ("Structure", "No opinionated structure can cause inconsistency"),
+                ("Vulnerabilities", "Security risks if not properly configured")
             ]
         }
         
         disadvantages = disadvantages_map.get(name, [
-            "Learning curve may vary depending on background",
-            "Dependency on community for updates and support",
-            "Potential compatibility issues with other libraries"
+            ("Learning Curve", "May vary based on developer background and experience"),
+            ("Maintenance", "Dependent on community for updates and long-term support"),
+            ("Compatibility", "Potential integration issues with other technologies")
         ])
         
-        return "\n".join(f"  • {dis}" for dis in disadvantages)
+        formatted_disadvantages = []
+        for title, description in disadvantages:
+            formatted_disadvantages.append(f"{Icons.CROSS} {Colors.BOLD}{title}{Colors.RESET}: {description}")
+        
+        return "\n".join(formatted_disadvantages)
 
-    def _get_cost_analysis(self, lib_info: Dict) -> str:
-        """Generate cost analysis"""
+    def _get_modern_cost_analysis(self, lib_info: Dict) -> str:
+        """Generate modern cost analysis"""
         license_type = lib_info['license']
         
         if license_type in ['MIT', 'BSD', 'Apache']:
-            return f"""
-  • License: {license_type} - Free for commercial use
-  • Pricing: Open source, no licensing fees
-  • Total Cost of Ownership: 
-    - Development time and learning curve
-    - Training and onboarding costs
-    - Potential support and consulting fees
-    - Infrastructure and hosting costs
-  • Hidden Costs: Third-party integrations, premium tools, enterprise support
-"""
+            cost_items = [
+                f"{Icons.LICENSE} License: {Colors.SUCCESS}{license_type}{Colors.RESET} - Free for commercial use",
+                f"{Icons.MONEY} Licensing Fees: {Colors.SUCCESS}$0{Colors.RESET} - Open source",
+                f"{Icons.GEAR} Development Costs:",
+                f"  • Learning curve and training time",
+                f"  • Initial setup and configuration",
+                f"  • Ongoing maintenance and updates",
+                f"{Icons.COMMUNITY} Support Options:",
+                f"  • Community forums and documentation (Free)",
+                f"  • Professional consulting services (Variable)",
+                f"  • Enterprise support contracts (Optional)"
+            ]
         else:
-            return f"""
-  • License: {license_type} - Review terms carefully
-  • Pricing: Check current pricing model
-  • Total Cost of Ownership: Calculate based on team size and usage
-"""
+            cost_items = [
+                f"{Icons.LICENSE} License: {Colors.WARNING}{license_type}{Colors.RESET} - Review terms carefully",
+                f"{Icons.MONEY} Pricing: Check vendor pricing model",
+                f"{Icons.GEAR} Total Cost: Calculate based on team size and usage scale"
+            ]
+        
+        return "\n".join(cost_items)
 
-    def _get_risk_assessment(self, lib_info: Dict) -> str:
-        """Generate risk assessment"""
-        return f"""
-  • Security: Regular security updates, {lib_info['popularity']} adoption reduces risk
-  • Maintenance: Active community, regular updates expected
-  • Business Risk: {self._get_business_risk_level(lib_info)} risk based on popularity and backing
-  • Technical Debt: Manageable with proper version management
-  • Migration Risk: {self._get_migration_risk(lib_info)}
-"""
+    def _get_modern_risk_assessment(self, lib_info: Dict) -> str:
+        """Generate modern risk assessment"""
+        popularity = lib_info['popularity'].lower()
+        
+        # Determine risk levels
+        security_risk = "Low" if 'high' in popularity else "Medium"
+        maintenance_risk = "Low" if 'very high' in popularity else "Medium"
+        business_risk = self._get_business_risk_level(lib_info)
+        
+        # Create risk indicators
+        risk_items = [
+            f"{Icons.SECURITY} Security Risk: {self._get_risk_badge(security_risk)}",
+            f"  • Regular security updates and patches",
+            f"  • Active vulnerability monitoring",
+            f"  • {popularity.title()} adoption reduces attack surface",
+            "",
+            f"{Icons.MAINTENANCE} Maintenance Risk: {self._get_risk_badge(maintenance_risk)}",
+            f"  • Community-driven development model",
+            f"  • Regular release cycle and updates",
+            f"  • Long-term support considerations",
+            "",
+            f"{Icons.CHART} Business Risk: {self._get_risk_badge(business_risk)}",
+            f"  • Vendor lock-in assessment",
+            f"  • Technology evolution and trends",
+            f"  • Skills availability in market",
+            "",
+            f"{Icons.ARROW_RIGHT} Migration Risk: {self._get_migration_risk_modern(lib_info)}"
+        ]
+        
+        return "\n".join(risk_items)
+
+    def _get_risk_badge(self, risk_level: str) -> str:
+        """Create colored risk level badge"""
+        if risk_level.lower() == "low":
+            return f"{Colors.SUCCESS}{risk_level}{Colors.RESET}"
+        elif risk_level.lower() == "medium":
+            return f"{Colors.WARNING}{risk_level}{Colors.RESET}"
+        else:
+            return f"{Colors.ERROR}{risk_level}{Colors.RESET}"
+
+    def _get_migration_risk_modern(self, lib_info: Dict) -> str:
+        """Get modern migration risk assessment"""
+        name = lib_info['name']
+        risk_map = {
+            "React": f"{self._get_risk_badge('Medium')} - Large ecosystem but many alternatives available",
+            "Vue.js": f"{self._get_risk_badge('Low')} - Excellent migration paths to other frameworks",
+            "Django": f"{self._get_risk_badge('Medium')} - Well-established migration patterns",
+            "Flask": f"{self._get_risk_badge('Low')} - Lightweight nature simplifies migration",
+            "Express.js": f"{self._get_risk_badge('Low')} - Standard patterns transfer easily"
+        }
+        return risk_map.get(name, f"{self._get_risk_badge('Medium')} - Evaluate based on project complexity")
+
+    def _get_modern_technical_considerations(self, lib_info: Dict) -> str:
+        """Generate modern technical considerations"""
+        name = lib_info['name']
+        
+        complexity_map = {
+            "React": ("Medium-High", 4),
+            "Vue.js": ("Low-Medium", 2),
+            "Django": ("Medium", 3),
+            "Flask": ("Low-Medium", 2),
+            "Express.js": ("Low-Medium", 2)
+        }
+        
+        complexity, complexity_score = complexity_map.get(name, ("Medium", 3))
+        performance_score = self._get_performance_score(name)
+        learning_score = self._get_learning_score(name)
+        
+        technical_items = [
+            f"{Icons.GEAR} Implementation Complexity: {Colors.ACCENT}{complexity}{Colors.RESET}",
+            f"   {ModernFormatter.create_progress_bar(complexity_score * 20, 100, 15)}",
+            "",
+            f"{Icons.PERFORMANCE} Performance Rating: {self._get_performance_rating_modern(name)}",
+            f"   {ModernFormatter.create_progress_bar(performance_score * 20, 100, 15)}",
+            "",
+            f"{Icons.LIGHTBULB} Learning Curve: {self._get_learning_curve_modern(name)}",
+            f"   {ModernFormatter.create_progress_bar(learning_score * 20, 100, 15)}",
+            "",
+            f"{Icons.ARROW_RIGHT} Flexibility: {self._get_flexibility_rating(name)}",
+            f"{Icons.ARROW_RIGHT} Integration: Good compatibility with {Colors.ACCENT}{lib_info['language']}{Colors.RESET} ecosystem",
+            f"{Icons.ARROW_RIGHT} Ecosystem: {self._get_ecosystem_rating(name)}"
+        ]
+        
+        return "\n".join(technical_items)
+
+    def _get_performance_score(self, name: str) -> int:
+        """Get performance score (1-5)"""
+        scores = {
+            "React": 4, "Vue.js": 5, "Django": 4,
+            "Flask": 5, "Express.js": 5
+        }
+        return scores.get(name, 3)
+
+    def _get_learning_score(self, name: str) -> int:
+        """Get learning difficulty score (1=easy, 5=hard)"""
+        scores = {
+            "React": 4, "Vue.js": 2, "Django": 3,
+            "Flask": 2, "Express.js": 3
+        }
+        return scores.get(name, 3)
+
+    def _get_performance_rating_modern(self, name: str) -> str:
+        """Get modern performance rating"""
+        ratings = {
+            "React": f"{Colors.SUCCESS}Good with optimization{Colors.RESET}",
+            "Vue.js": f"{Colors.SUCCESS}Excellent out of the box{Colors.RESET}",
+            "Django": f"{Colors.SUCCESS}Good for complex applications{Colors.RESET}",
+            "Flask": f"{Colors.SUCCESS}Excellent for lightweight apps{Colors.RESET}",
+            "Express.js": f"{Colors.SUCCESS}Excellent for I/O operations{Colors.RESET}"
+        }
+        return ratings.get(name, f"{Colors.SUCCESS}Good{Colors.RESET}")
+
+    def _get_learning_curve_modern(self, name: str) -> str:
+        """Get modern learning curve assessment"""
+        curves = {
+            "React": f"{Colors.WARNING}Steep for beginners{Colors.RESET}",
+            "Vue.js": f"{Colors.SUCCESS}Gentle and beginner-friendly{Colors.RESET}",
+            "Django": f"{Colors.INFO}Moderate for Python developers{Colors.RESET}",
+            "Flask": f"{Colors.SUCCESS}Easy to start{Colors.RESET}",
+            "Express.js": f"{Colors.INFO}Moderate with Node.js knowledge{Colors.RESET}"
+        }
+        return curves.get(name, f"{Colors.INFO}Moderate{Colors.RESET}")
+
+    def _get_flexibility_rating(self, name: str) -> str:
+        """Get flexibility rating"""
+        flexible = ["Flask", "Express.js"]
+        if name in flexible:
+            return f"{Colors.SUCCESS}High customization options{Colors.RESET}"
+        return f"{Colors.INFO}Medium customization options{Colors.RESET}"
+
+    def _get_ecosystem_rating(self, name: str) -> str:
+        """Get ecosystem rating"""
+        large_ecosystems = ["React", "Django", "Express.js"]
+        if name in large_ecosystems:
+            return f"{Colors.SUCCESS}Large and mature ecosystem{Colors.RESET}"
+        elif name == "Vue.js":
+            return f"{Colors.INFO}Growing ecosystem{Colors.RESET}"
+        return f"{Colors.INFO}Good ecosystem support{Colors.RESET}"
 
     def _get_business_risk_level(self, lib_info: Dict) -> str:
         """Determine business risk level"""
@@ -1100,140 +1566,275 @@ and consider asking about specific aspects you'd like me to analyze.
         }
         return perf_map.get(name, "Good")
 
-    def _get_comparison_table(self, lib_info: Dict) -> str:
-        """Generate comparison table with alternatives"""
+    def _get_modern_comparison_table(self, lib_info: Dict) -> str:
+        """Generate modern comparison table with alternatives"""
         alternatives = lib_info.get('alternatives', [])
         if not alternatives:
-            return "No direct alternatives in database"
+            return f"{Colors.MUTED}No direct alternatives available in current database{Colors.RESET}"
         
         name = lib_info['name']
-        table = f"""
-| Feature | {name} | {alternatives[0] if len(alternatives) > 0 else 'N/A'} | {alternatives[1] if len(alternatives) > 1 else 'N/A'} | {alternatives[2] if len(alternatives) > 2 else 'N/A'} |
-|---------|--------|------------|------------|------------|
-| Learning Curve | {self._get_learning_curve(name)} | Compare individually | Compare individually | Compare individually |
-| Performance | {self._get_performance_rating(name)} | Varies | Varies | Varies |
-| Community | {lib_info['popularity']} | Research needed | Research needed | Research needed |
-| License | {lib_info['license']} | Check individually | Check individually | Check individually |
+        
+        # Create comparison data
+        comparison_data = []
+        comparison_data.append(["Feature", name] + alternatives[:3])
+        
+        # Add comparison rows
+        rows = [
+            ["Learning Curve", self._get_learning_curve_short(name)] + 
+            [self._get_learning_curve_short(alt) for alt in alternatives[:3]],
+            
+            ["Performance", self._get_performance_short(name)] + 
+            [self._get_performance_short(alt) for alt in alternatives[:3]],
+            
+            ["Community Size", lib_info['popularity']] + 
+            ["Research needed"] * min(3, len(alternatives)),
+            
+            ["License", lib_info['license']] + 
+            ["Check individually"] * min(3, len(alternatives))
+        ]
+        
+        comparison_data.extend(rows)
+        
+        # Format as modern table
+        table_lines = []
+        for i, row in enumerate(comparison_data):
+            if i == 0:  # Header
+                header_line = " │ ".join(f"{Colors.BOLD}{cell[:15]:15}{Colors.RESET}" for cell in row)
+                table_lines.append(header_line)
+                table_lines.append("─" * (len(header_line) - len(Colors.BOLD) - len(Colors.RESET)))
+            else:
+                data_line = " │ ".join(f"{cell[:15]:15}" for cell in row)
+                table_lines.append(data_line)
+        
+        table_text = "\n".join(table_lines)
+        
+        note = f"\n\n{Colors.MUTED}{Icons.INFO} For detailed comparison, analyze each alternative individually{Colors.RESET}"
+        
+        return table_text + note
 
-{Colors.WARNING}Note: For detailed comparison, analyze each alternative individually.{Colors.ENDC}
-"""
-        return table
+    def _get_learning_curve_short(self, name: str) -> str:
+        """Get short learning curve assessment"""
+        curves = {
+            "React": "Steep", "Vue.js": "Gentle", "Django": "Moderate",
+            "Flask": "Easy", "Express.js": "Moderate", "Angular": "Steep",
+            "Svelte": "Easy", "FastAPI": "Easy"
+        }
+        return curves.get(name, "Moderate")
 
-    def _get_recommendations(self, lib_info: Dict) -> str:
-        """Generate recommendations"""
+    def _get_performance_short(self, name: str) -> str:
+        """Get short performance rating"""
+        ratings = {
+            "React": "Good", "Vue.js": "Excellent", "Django": "Good", 
+            "Flask": "Excellent", "Express.js": "Excellent", "Angular": "Good",
+            "Svelte": "Excellent", "FastAPI": "Excellent"
+        }
+        return ratings.get(name, "Good")
+
+    def _get_modern_recommendations(self, lib_info: Dict) -> str:
+        """Generate modern recommendations"""
         name = lib_info['name']
         
         recommendations_map = {
             "React": {
-                "best_for": "Large-scale applications, teams with JS experience, component-heavy UIs",
-                "avoid_if": "Simple websites, tight deadlines, small teams without JS experience",
-                "migration": "Consider gradual adoption, start with new components"
+                "best_for": "Large-scale applications, experienced teams, component-heavy UIs",
+                "avoid_if": "Simple websites, tight deadlines, teams new to JavaScript",
+                "migration": "Gradual adoption strategy, start with new components",
+                "alternatives": "Vue.js for easier learning, Angular for enterprise"
             },
             "Vue.js": {
-                "best_for": "Progressive enhancement, teams new to frameworks, rapid prototyping",
-                "avoid_if": "Very large enterprise apps, teams requiring extensive ecosystem",
-                "migration": "Excellent migration path from jQuery or vanilla JS"
+                "best_for": "Progressive enhancement, rapid prototyping, beginner-friendly projects",
+                "avoid_if": "Very large enterprise applications requiring extensive ecosystem",
+                "migration": "Excellent migration path from jQuery or vanilla JavaScript",
+                "alternatives": "React for larger ecosystem, Svelte for smaller bundles"
             },
             "Django": {
-                "best_for": "Content-heavy sites, rapid development, teams needing admin interface",
-                "avoid_if": "Microservices, real-time apps, API-only backends",
-                "migration": "Plan database migration carefully, consider gradual API migration"
+                "best_for": "Content-heavy sites, rapid development, admin interface needs",
+                "avoid_if": "Microservices architecture, real-time applications, API-only backends",
+                "migration": "Plan database migration carefully, consider gradual API migration",
+                "alternatives": "FastAPI for modern APIs, Flask for flexibility"
             },
             "Flask": {
                 "best_for": "APIs, microservices, custom architectures, learning web development",
-                "avoid_if": "Rapid prototyping with admin needs, teams preferring opinionated structure",
-                "migration": "Easy to migrate to from other Python frameworks"
+                "avoid_if": "Rapid prototyping needs, teams preferring opinionated structure",
+                "migration": "Easiest migration path from other Python frameworks",
+                "alternatives": "Django for batteries-included, FastAPI for modern async"
             },
             "Express.js": {
                 "best_for": "APIs, real-time applications, Node.js environments, microservices",
-                "avoid_if": "CPU-intensive tasks, teams without JS experience",
-                "migration": "Good migration path from other Node.js frameworks"
+                "avoid_if": "CPU-intensive tasks, teams without JavaScript experience",
+                "migration": "Standard migration path from other Node.js frameworks",
+                "alternatives": "Fastify for performance, NestJS for structure"
             }
         }
         
         rec = recommendations_map.get(name, {
             "best_for": f"Projects in {lib_info['category']} category",
-            "avoid_if": "Incompatible requirements or team expertise",
-            "migration": "Evaluate migration complexity based on current stack"
+            "avoid_if": "Incompatible requirements or team expertise mismatch",
+            "migration": "Evaluate migration complexity based on current technology stack",
+            "alternatives": "Research similar libraries in the same category"
         })
         
-        return f"""
-  • Best for: {rec['best_for']}
-  • Avoid if: {rec['avoid_if']}
-  • Migration path: {rec['migration']}
-"""
+        recommendation_items = [
+            f"{Icons.TARGET} {Colors.BOLD}Best suited for:{Colors.RESET}",
+            f"  {rec['best_for']}",
+            "",
+            f"{Icons.WARNING} {Colors.BOLD}Consider alternatives if:{Colors.RESET}",
+            f"  {rec['avoid_if']}",
+            "",
+            f"{Icons.ARROW_RIGHT} {Colors.BOLD}Migration strategy:{Colors.RESET}",
+            f"  {rec['migration']}",
+            "",
+            f"{Icons.LIGHTBULB} {Colors.BOLD}Consider also:{Colors.RESET}",
+            f"  {rec['alternatives']}"
+        ]
+        
+        return "\n".join(recommendation_items)
 
     def compare_libraries(self, lib1: str, lib2: str) -> str:
-        """Compare two libraries side by side"""
-        basic_comparison = f"""
-{Colors.HEADER}{Colors.BOLD}📊 Library Comparison: {lib1} vs {lib2}{Colors.ENDC}
-
-{Colors.OKCYAN}Analyzing both libraries...{Colors.ENDC}
-
-{Colors.OKGREEN}--- {lib1} Analysis ---{Colors.ENDC}
-{self.analyze_library(lib1)}
-
-{Colors.OKGREEN}--- {lib2} Analysis ---{Colors.ENDC}
-{self.analyze_library(lib2)}
-
-{Colors.WARNING}Summary Recommendation:{Colors.ENDC}
-Consider your specific requirements:
-• Team expertise and learning curve
-• Project timeline and complexity
-• Long-term maintenance needs
-• Integration requirements
-• Performance criteria
-"""
+        """Compare two libraries with modern side-by-side design"""
         
-        # Enhance with AI comparison if available
+        # Modern header
+        header = f"\n{Colors.HEADER}{Colors.BOLD}{Icons.COMPARE} Library Comparison{Colors.RESET}\n"
+        
+        # Create comparison header card
+        comparison_header = ModernFormatter.create_card(
+            f"Comparing: {lib1} vs {lib2}",
+            f"Comprehensive side-by-side analysis of both libraries",
+            Icons.CHART,
+            Colors.PRIMARY
+        )
+        
+        # Get analyses for both libraries
+        analysis1 = self.analyze_library(lib1)
+        analysis2 = self.analyze_library(lib2)
+        
+        # Create side-by-side comparison summary
+        summary_content = f"""
+{Colors.ACCENT}{Colors.BOLD}{lib1}{Colors.RESET}                    vs                    {Colors.ACCENT}{Colors.BOLD}{lib2}{Colors.RESET}
+{'─' * 25}    {'─' * 25}
+
+{Icons.TARGET} Use Cases:
+• Focus on your specific requirements
+• Consider team expertise and experience level
+• Evaluate project timeline and complexity
+• Assess long-term maintenance needs
+• Review integration requirements
+• Analyze performance criteria
+
+{Icons.LIGHTBULB} Decision Framework:
+• Technical requirements alignment
+• Learning curve vs delivery timeline
+• Community support and ecosystem
+• License compatibility with project
+• Migration and future-proofing strategy
+        """.strip()
+        
+        summary_card = ModernFormatter.create_card(
+            "Summary & Decision Guide",
+            summary_content,
+            Icons.TARGET,
+            Colors.INFO
+        )
+        
+        # Combine all parts
+        basic_comparison = header + comparison_header + analysis1 + "\n" + analysis2 + "\n" + summary_card
+        
+        # Add AI enhancement if available
         if self.use_ai:
             ai_comparison = self._call_azure_openai(
-                f"Compare {lib1} vs {lib2} libraries in detail",
+                f"Create a detailed comparison between {lib1} and {lib2} libraries",
                 f"Libraries to compare: {lib1} and {lib2}"
             )
             if ai_comparison:
-                basic_comparison += f"\n\n{Colors.HEADER}🤖 AI-Powered Detailed Comparison:{Colors.ENDC}\n{ai_comparison}"
+                ai_card = ModernFormatter.create_card(
+                    "AI-Powered Detailed Comparison",
+                    ai_comparison,
+                    Icons.LIGHTBULB,
+                    Colors.ACCENT
+                )
+                basic_comparison += ai_card
         
         return basic_comparison
 
     def get_recommendations(self, category: str) -> str:
-        """Get recommendations for a specific category"""
+        """Get modern styled recommendations for a specific category"""
         category_libraries = []
         for lib_key, lib_info in self.known_libraries.items():
             if category.lower() in lib_info['category'].lower():
                 category_libraries.append(lib_info)
         
         if not category_libraries:
-            return f"""
-{Colors.WARNING}No libraries found for category: {category}{Colors.ENDC}
+            # No libraries found - show available categories
+            available_categories = self._get_available_categories()
+            
+            not_found_content = f"""
+{Colors.WARNING}No libraries found matching: {category}{Colors.RESET}
 
-{Colors.OKCYAN}Available categories:{Colors.ENDC}
-{self._get_available_categories()}
+{Colors.INFO}{Icons.LIBRARY} Available Categories:{Colors.RESET}
+{available_categories}
 
-{Colors.OKGREEN}Try asking for specific recommendations like:{Colors.ENDC}
+{Colors.PRIMARY}{Icons.LIGHTBULB} Try these examples:{Colors.RESET}
 • "recommend web frameworks"
-• "suggest frontend libraries"
+• "suggest frontend libraries" 
 • "find database libraries"
-"""
+• "recommend testing tools"
+            """.strip()
+            
+            return ModernFormatter.create_card(
+                "Category Not Found",
+                not_found_content,
+                Icons.WARNING,
+                Colors.WARNING
+            )
         
-        result = f"""
-{Colors.HEADER}{Colors.BOLD}🎯 Recommendations for: {category}{Colors.ENDC}
-
-{Colors.OKCYAN}Found {len(category_libraries)} libraries in this category:{Colors.ENDC}
-
-"""
+        # Header
+        header = f"\n{Colors.HEADER}{Colors.BOLD}{Icons.TARGET} Recommendations for: {category.title()}{Colors.RESET}\n"
         
+        # Found libraries card
+        found_content = f"Found {Colors.ACCENT}{len(category_libraries)}{Colors.RESET} libraries in this category"
+        found_card = ModernFormatter.create_card(
+            "Search Results",
+            found_content,
+            Icons.SUCCESS,
+            Colors.SUCCESS
+        )
+        
+        # Library recommendations
+        library_cards = []
         for lib in category_libraries[:5]:  # Limit to top 5
-            result += f"""
-{Colors.OKGREEN}• {lib['name']}{Colors.ENDC}
-  Language: {lib['language']}
-  Description: {lib['description']}
-  Popularity: {lib['popularity']}
-  License: {lib['license']}
-  
-"""
+            lib_content = f"""
+{Colors.DIM}Language:{Colors.RESET} {Colors.ACCENT}{lib['language']}{Colors.RESET}
+{Colors.DIM}Description:{Colors.RESET} {lib['description']}
+
+{Icons.STAR} Popularity: {ModernFormatter.create_badge(lib['popularity'], Colors.PRIMARY)}
+{Icons.LICENSE} License: {ModernFormatter.create_badge(lib['license'], Colors.INFO)}
+
+{Icons.ARROW_RIGHT} {Colors.DIM}For detailed analysis, type:{Colors.RESET} {Colors.ACCENT}analyze {lib['name']}{Colors.RESET}
+            """.strip()
+            
+            library_cards.append(ModernFormatter.create_card(
+                lib['name'],
+                lib_content,
+                Icons.LIBRARY,
+                Colors.PRIMARY
+            ))
         
-        result += f"{Colors.WARNING}For detailed analysis of any library, type: analyze <library_name>{Colors.ENDC}"
+        # Quick actions
+        quick_actions = f"""
+{Icons.ANALYSIS} {Colors.ACCENT}analyze <library>{Colors.RESET} - Get detailed analysis
+{Icons.COMPARE} {Colors.ACCENT}compare <lib1> vs <lib2>{Colors.RESET} - Side-by-side comparison
+{Icons.TARGET} {Colors.ACCENT}ai <question>{Colors.RESET} - AI-powered insights (if enabled)
+        """.strip()
+        
+        actions_card = ModernFormatter.create_card(
+            "Next Steps",
+            quick_actions,
+            Icons.LIGHTBULB,
+            Colors.INFO
+        )
+        
+        # Combine all parts
+        result = header + found_card + "\n".join(library_cards) + actions_card
         return result
 
     def _get_available_categories(self) -> str:
