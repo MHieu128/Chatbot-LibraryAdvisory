@@ -127,8 +127,7 @@ class LibraryAdvisoryBot:
                 api_version=api_version
             )
             
-            self.deployment_name = os.getenv('AZURE_OPENAI_DEPLOYMENT_NAME', 'gpt-4')
-            self.model = os.getenv('AZURE_OPENAI_MODEL', 'gpt-4')
+            self.deployment_name = os.getenv('AZURE_OPENAI_DEPLOYMENT_NAME', 'GPT-4o-mini')
             self.temperature = float(os.getenv('OPENAI_TEMPERATURE', '0.7'))
             self.max_tokens = int(os.getenv('OPENAI_MAX_TOKENS', '2000'))
             

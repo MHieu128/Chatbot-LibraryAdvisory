@@ -40,7 +40,6 @@ A comprehensive terminal chatbot for software library evaluation and recommendat
    AZURE_OPENAI_API_KEY=your-api-key-here
    AZURE_OPENAI_API_VERSION=2024-02-15-preview
    AZURE_OPENAI_DEPLOYMENT_NAME=gpt-4
-   AZURE_OPENAI_MODEL=gpt-4
    OPENAI_TEMPERATURE=0.7
    OPENAI_MAX_TOKENS=2000
    DEBUG=false
