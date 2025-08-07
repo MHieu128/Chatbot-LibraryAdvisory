@@ -12,12 +12,13 @@
             min-height: 400px;
             max-height: 700px;
             overflow-y: auto;
+            overflow-x: hidden;
             border: 1px solid #dee2e6;
             border-radius: 0.375rem;
             padding: 1rem;
             background-color: #f8f9fa;
-            display: flex;
-            flex-direction: column;
+            word-wrap: break-word;
+            word-break: break-word;
         }
         
         .message {
@@ -27,27 +28,54 @@
             word-wrap: break-word;
             word-break: break-word;
             overflow-wrap: break-word;
+            max-width: 100%;
         }
         
         .user-message {
             background-color: #007bff;
             color: white;
-            margin-left: 2rem;
+            margin-left: 20%;
+            margin-right: 0.5rem;
             text-align: right;
         }
         
         .user-message .timestamp {
-            color: rgba(255, 255, 255, 0.8);
+            color: #6c757d;
+            font-size: 0.75rem;
         }
         
         .bot-message {
             background-color: white;
             border: 1px solid #dee2e6;
-            margin-right: 2rem;
+            margin-right: 20%;
+            margin-left: 0.5rem;
         }
         
         .bot-message .timestamp {
             color: #6c757d;
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .user-message {
+                margin-left: 10%;
+            }
+            .bot-message {
+                margin-right: 10%;
+            }
+        }
+        
+        @media (max-width: 576px) {
+            .user-message {
+                margin-left: 5%;
+            }
+            .bot-message {
+                margin-right: 5%;
+            }
+            .chat-container {
+                height: calc(100vh - 250px);
+                padding: 0.5rem;
+            }
         }
         
         .library-card {
