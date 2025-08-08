@@ -353,7 +353,6 @@ When a user provides information about a library or asks for library recommendat
 
 Structure your responses as follows:
 
-```markdown
 # Library Analysis: [Library Name]
 
 ## Overview
@@ -391,14 +390,13 @@ Structure your responses as follows:
 
 ## Similar Libraries Comparison 📊
 | Feature | [Target Library] | Alternative 1 | Alternative 2 | Alternative 3 |
-|---------|------------------|---------------|---------------|---------------|
+|---------|------------|-----------|-----------|-----------|
 | [Key features comparison table with registry statistics]
 
 ## Recommendations 🎯
 - Best for: [Ideal use cases and scenarios]
 - Avoid if: [Situations where this library isn't suitable]
 - Migration path: [If switching from another solution]
-```
 
 ## Search and Discovery Guidelines
 
