@@ -109,7 +109,7 @@ def init_enhanced_features():
             tts_config = TTSConfig(
                 cache_dir=os.environ.get('TTS_CACHE_DIR', './tts_cache'),
                 max_cache_size_mb=int(os.environ.get('TTS_MAX_CACHE_SIZE_MB', '500')),
-                max_text_length=int(os.environ.get('TTS_MAX_TEXT_LENGTH', '1000')),
+                max_text_length=int(os.environ.get('TTS_MAX_TEXT_LENGTH', '20000')),  # Tăng từ 1000 lên 3000
                 device=os.environ.get('TTS_DEVICE', 'auto')
             )
             tts_manager = get_tts_manager(tts_config)
@@ -243,28 +243,50 @@ def chat():
     
     # Process the message
     try:
+        # Define similarity threshold for ChromaDB results
+        SIMILARITY_THRESHOLD = 0.6  # Minimum similarity score to consider result relevant
+        
         # Check if this is a library analysis request
         if user_message.lower().startswith('analyze '):
             library_name = user_message[8:].strip()  # Remove "analyze " prefix
-            response = bot_instance.analyze_library(library_name)
+            # Use enhanced method if available, otherwise use regular method
+            if hasattr(bot_instance, 'analyze_library_enhanced'):
+                response = bot_instance.analyze_library_enhanced(library_name)
+            elif hasattr(bot_instance, 'analyze_library'):
+                response = bot_instance.analyze_library(library_name)
+            else:
+                response = f"Library analysis not available for {library_name}"
         else:
-            # Enhance with ChromaDB if available for other queries
+            # Try to enhance with ChromaDB if available for other queries
             enhanced_response = None
+            use_chromadb_response = False
+            
             if chromadb_ready and chromadb_manager:
                 try:
                     # Try semantic search for non-analysis queries
                     library_results = chromadb_manager.search_libraries(user_message, n_results=3)
                     faq_results = chromadb_manager.search_faqs(user_message, n_results=2)
                     
-                    if library_results or faq_results:
-                        enhanced_response = format_enhanced_response(user_message, library_results, faq_results)
+                    # Filter results by similarity threshold
+                    relevant_library_results = [r for r in library_results if r.score >= SIMILARITY_THRESHOLD]
+                    relevant_faq_results = [r for r in faq_results if r.score >= SIMILARITY_THRESHOLD]
+                    
+                    # Only use ChromaDB response if we have relevant results
+                    if relevant_library_results or relevant_faq_results:
+                        enhanced_response = format_enhanced_response(user_message, relevant_library_results, relevant_faq_results)
+                        use_chromadb_response = True
+                        logger.info(f"Using ChromaDB response - Libraries: {len(relevant_library_results)}, FAQs: {len(relevant_faq_results)}")
+                    else:
+                        logger.info(f"ChromaDB results below threshold - max library score: {max([r.score for r in library_results], default=0):.2f}, max FAQ score: {max([r.score for r in faq_results], default=0):.2f}")
+                        
                 except Exception as e:
                     logger.error(f"ChromaDB enhancement failed: {e}")
             
-            # Use enhanced response if available, otherwise use bot response
-            if enhanced_response:
+            # Use enhanced response if available and relevant, otherwise fallback to bot response
+            if use_chromadb_response and enhanced_response:
                 response = enhanced_response
             else:
+                # Fallback to regular bot analysis functions
                 response = bot_instance.process_input(user_message)
         
         if response == "exit":
@@ -299,33 +321,59 @@ def chat():
             'response': formatted_response,
             'timestamp': datetime.now().strftime('%H:%M:%S'),
             'has_audio': False,
-            'enhanced': bool(enhanced_response)
+            'enhanced': use_chromadb_response if 'use_chromadb_response' in locals() else False
         }
         
         # Generate TTS if requested and available
         if enable_tts and tts_ready and tts_manager and response:
+            logger.info(f"TTS conditions check - enable_tts: {enable_tts}, tts_ready: {tts_ready}, tts_manager: {tts_manager is not None}, response: {bool(response)}")
             try:
                 # Clean response for TTS
                 tts_text = clean_response_for_tts(response)
+                logger.info(f"TTS text after cleaning - length: {len(tts_text) if tts_text else 0}")
                 
                 if tts_text and len(tts_text.strip()) > 0:
+                    # If text is still too long, create a summary
+                    if len(tts_text) > 2500:
+                        # Create a very short summary for extremely long text
+                        sentences = tts_text.split('. ')
+                        summary_parts = []
+                        summary_parts.append(sentences[0] if sentences else "")  # First sentence
+                        
+                        # Add one key point from middle
+                        if len(sentences) > 2:
+                            summary_parts.append(sentences[len(sentences)//2])
+                        
+                        # Add conclusion if available
+                        if len(sentences) > 1:
+                            summary_parts.append(sentences[-1])
+                        
+                        tts_text = '. '.join(filter(None, summary_parts))
+                        logger.info(f"Created summary for TTS - length: {len(tts_text)}")
+                    
+                    logger.info("Generating TTS audio...")
                     audio_result = tts_manager.generate_audio(tts_text)
+                    logger.info(f"TTS result - success: {audio_result.success}")
                     
                     if audio_result.success:
                         # Store audio and provide URL
                         audio_id = store_temporary_audio(audio_result.audio_bytes)
+                        logger.info(f"Audio stored with ID: {audio_id}")
                         
                         response_data.update({
                             'has_audio': True,
                             'audio_url': f'/api/tts/audio/{audio_id}',
                             'audio_id': audio_id,
                             'audio_duration': audio_result.duration_seconds,
-                            'audio_cache_hit': audio_result.cache_hit
+                            'audio_cache_hit': audio_result.cache_hit,
+                            'tts_text_length': len(tts_text)
                         })
                     else:
                         logger.warning(f"TTS generation failed: {audio_result.error_message}")
+                else:
+                    logger.warning(f"TTS text is empty or too short after cleaning")
             except Exception as e:
-                logger.error(f"TTS processing failed: {e}")
+                logger.error(f"TTS processing failed: {e}", exc_info=True)
         
         # Add to session conversation history
         if 'conversation_history' not in session:
@@ -346,7 +394,7 @@ def chat():
         return jsonify({'error': f'Error processing message: {str(e)}'}), 500
 
 def format_enhanced_response(query: str, library_results: list, faq_results: list) -> str:
-    """Format enhanced response using ChromaDB results"""
+    """Format enhanced response using ChromaDB results with similarity scores"""
     response_parts = []
     
     # Add relevant libraries
@@ -354,8 +402,12 @@ def format_enhanced_response(query: str, library_results: list, faq_results: lis
         response_parts.append("## 📚 Relevant Libraries")
         for result in library_results[:3]:
             metadata = result.metadata
-            response_parts.append(f"**{metadata['name']}** - {metadata.get('category', 'Unknown')} ({metadata.get('language', 'Unknown')})")
+            response_parts.append(f"**{metadata.get('name', 'Unknown')}** - {metadata.get('category', 'Unknown')} ({metadata.get('language', 'Unknown')})")
             response_parts.append(f"*Similarity: {result.score:.1%}*")
+            
+            # Add description if available
+            if metadata.get('description'):
+                response_parts.append(f"{metadata['description']}")
             response_parts.append("")
     
     # Add relevant FAQs
@@ -377,8 +429,8 @@ def format_enhanced_response(query: str, library_results: list, faq_results: lis
     # Add header
     final_response = f"## 🤖 Enhanced Response for: {query}\n\n" + "\n".join(response_parts)
     
-    # Add footer
-    final_response += "\n---\n*This response was enhanced using semantic search.*"
+    # Add footer with source information
+    final_response += "\n---\n*This response was enhanced using semantic search from our knowledge base.*"
     
     return final_response
 
@@ -398,12 +450,15 @@ def classify_user_intent(query: str) -> str:
         return 'general'
 
 def clean_response_for_tts(response: str) -> str:
-    """Clean response text for TTS processing"""
+    """Clean response text for TTS processing - Enhanced version"""
     if not response:
         return ""
     
+    # Remove HTML tags first
+    clean_text = re.sub(r'<[^>]+>', '', response)
+    
     # Remove markdown headers
-    clean_text = re.sub(r'^#+\s+', '', response, flags=re.MULTILINE)
+    clean_text = re.sub(r'^#+\s+', '', clean_text, flags=re.MULTILINE)
     
     # Remove markdown formatting
     clean_text = re.sub(r'\*\*(.*?)\*\*', r'\1', clean_text)
@@ -417,25 +472,56 @@ def clean_response_for_tts(response: str) -> str:
     clean_text = re.sub(r'\[([^\]]+)\]\([^\)]+\)', r'\1', clean_text)
     
     # Remove emojis and special characters for TTS
-    clean_text = re.sub(r'[📚🤖❓⚖️🎯💡📊🔍⭐🚀💰🛡️⚙️👥🔧⚠️✅❌ℹ️→•]', '', clean_text)
+    clean_text = re.sub(r'[📚🤖❓⚖️🎯💡📊🔍⭐🚀💰🛡️⚙️👥🔧⚠️✅❌ℹ️→•─]', '', clean_text)
+    
+    # Remove excessive dashes and underscores
+    clean_text = re.sub(r'[─_-]{3,}', '. ', clean_text)
     
     # Clean up extra whitespace and newlines
     clean_text = re.sub(r'\n+', '. ', clean_text)
     clean_text = re.sub(r'\s+', ' ', clean_text).strip()
     
-    # Limit length for TTS
-    if len(clean_text) > 800:
+    # Remove multiple periods
+    clean_text = re.sub(r'\.{2,}', '.', clean_text)
+    
+    # Limit length for TTS - Intelligent summarization
+    max_length = 2500  # Tăng giới hạn
+    if len(clean_text) > max_length:
+        # Try to find good breaking points
         sentences = clean_text.split('. ')
-        truncated = []
+        
+        # Prioritize important sections
+        important_parts = []
         current_length = 0
         
-        for sentence in sentences:
-            if current_length + len(sentence) > 800:
+        # Always include the first few sentences (overview)
+        for i, sentence in enumerate(sentences[:5]):
+            if current_length + len(sentence) < max_length * 0.4:  # Use 40% for overview
+                important_parts.append(sentence)
+                current_length += len(sentence)
+            else:
                 break
-            truncated.append(sentence)
-            current_length += len(sentence)
         
-        clean_text = '. '.join(truncated) + '.'
+        # Add key conclusions if space available
+        remaining_length = max_length - current_length
+        for sentence in reversed(sentences[-3:]):  # Last 3 sentences often contain conclusions
+            if len(sentence) < remaining_length * 0.3:
+                important_parts.append(sentence)
+                remaining_length -= len(sentence)
+                break
+        
+        # Fill remaining space with middle content
+        middle_start = len(important_parts)
+        for sentence in sentences[middle_start:-3]:
+            if current_length + len(sentence) < max_length:
+                important_parts.append(sentence)
+                current_length += len(sentence)
+            else:
+                break
+        
+        clean_text = '. '.join(important_parts)
+        if not clean_text.endswith('.'):
+            clean_text += '.'
     
     return clean_text
 

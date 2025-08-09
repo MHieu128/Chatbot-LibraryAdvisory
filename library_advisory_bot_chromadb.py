@@ -1031,7 +1031,7 @@ Always verify current information and test libraries in your specific environmen
             
             # Create enhanced analysis
             analysis_content = f"""
-{Icons.ANALYSIS} {Colors.BOLD}Enhanced Analysis: {metadata.get('name', library_name)}{Colors.RESET}
+{Icons.ANALYSIS} {Colors.BOLD}Library Analysis: {metadata.get('name', library_name)}{Colors.RESET}
 
 {Colors.PRIMARY}{Colors.BOLD}Overview:{Colors.RESET}
 {metadata.get('description', 'No description available')}
@@ -1082,12 +1082,7 @@ Always verify current information and test libraries in your specific environmen
                 if ai_response:
                     analysis_content += f"\n\n{Colors.HEADER}🤖 AI-Enhanced Analysis:{Colors.RESET}\n{ai_response}"
             
-            return ModernFormatter.create_card(
-                f"Library Analysis: {metadata.get('name', library_name)}",
-                analysis_content,
-                Icons.ANALYSIS,
-                Colors.PRIMARY
-            )
+            return analysis_content
             
         except Exception as e:
             return f"{Colors.FAIL}Enhanced analysis failed: {e}{Colors.ENDC}"
