@@ -38,11 +38,12 @@ class TTSConfig:
     vocoder_name: str = "microsoft/speecht5_hifigan"
     cache_dir: str = "./tts_cache"
     max_cache_size_mb: int = 500
-    max_text_length: int = 1000
+    max_text_length: int = 20000
     sample_rate: int = 16000
     audio_format: str = "wav"
     enable_caching: bool = True
     device: str = "auto"  # "auto", "cpu", or "cuda"
+    speech_rate: float = 0.8 # Tốc độ speech (1.0 = bình thường, 0.8 = chậm hơn)
 
 @dataclass
 class AudioResult:
@@ -285,9 +286,9 @@ class TextPreprocessor:
         # Remove or replace special characters that confuse TTS
         processed_text = self._clean_special_characters(processed_text)
         
-        # Limit text length for better TTS performance
-        if len(processed_text) > 1000:
-            processed_text = self._truncate_text_intelligently(processed_text, 1000)
+        # Limit text length for better TTS performance  
+        #if len(processed_text) > 20000:  # Tăng từ 1000 lên 2500
+        #    processed_text = self._truncate_text_intelligently(processed_text, 20000)
         
         return processed_text.strip()
     
@@ -368,12 +369,15 @@ class TextPreprocessor:
         if len(sentences) > 1:
             # Remove the last potentially incomplete sentence
             truncated = '.'.join(sentences[:-1]) + '.'
-            if len(truncated) > 50:  # Ensure we have meaningful content
+            if len(truncated) > 100:  # Giảm từ 50 xuống 100 để giữ nhiều nội dung hơn
                 return truncated
         
-        # Fallback: truncate at word boundary
+        # Fallback: truncate at word boundary but keep more content
         words = text[:max_length].split()
-        return ' '.join(words[:-1]) + '.'
+        if len(words) > 10:  # Đảm bảo có ít nhất 10 từ
+            return ' '.join(words[:-1]) + '.'
+        else:
+            return text[:max_length] + '.'
 
 class TTSManager:
     """Main TTS manager using HuggingFace models"""
@@ -490,11 +494,9 @@ class TTSManager:
             )
         
         if len(text) > self.config.max_text_length:
-            return AudioResult(
-                success=False,
-                error_message=f"Text too long (max {self.config.max_text_length} characters)",
-                processing_time=time.time() - start_time
-            )
+            # Thay vì reject, hãy cắt text xuống size phù hợp
+            self.logger.warning(f"Text too long ({len(text)} chars), truncating to {self.config.max_text_length}")
+            text = self.text_preprocessor._truncate_text_intelligently(text, self.config.max_text_length)
         
         # Initialize models if not already loaded
         if not self._models_loaded:

@@ -40,5 +40,23 @@
     "size_bytes": 446508,
     "created": 1754726033.8123462,
     "last_accessed": 1754726033.812358
+  },
+  "4e62e215c0294ebfc545f7730a128a1e": {
+    "file_path": "./tts_cache/4e62e215c0294ebfc545f7730a128a1e.wav",
+    "size_bytes": 369708,
+    "created": 1754726574.859536,
+    "last_accessed": 1754726574.859537
+  },
+  "2f523b76aed2e239bf906433d7465070": {
+    "file_path": "./tts_cache/2f523b76aed2e239bf906433d7465070.wav",
+    "size_bytes": 341036,
+    "created": 1754726803.6257899,
+    "last_accessed": 1754726803.6257899
+  },
+  "9f2a8b2f3395e901041105e555bdaf67": {
+    "file_path": "./tts_cache/9f2a8b2f3395e901041105e555bdaf67.wav",
+    "size_bytes": 378924,
+    "created": 1754727098.180444,
+    "last_accessed": 1754727098.180444
   }
 }

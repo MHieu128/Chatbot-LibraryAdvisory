@@ -485,7 +485,7 @@ def clean_response_for_tts(response: str) -> str:
     clean_text = re.sub(r'\.{2,}', '.', clean_text)
     
     # Limit length for TTS - Intelligent summarization
-    max_length = 2500  # Tăng giới hạn
+    max_length = 10000  # Tăng từ 2500 lên 4000 để có thời gian speech dài hơn
     if len(clean_text) > max_length:
         # Try to find good breaking points
         sentences = clean_text.split('. ')
