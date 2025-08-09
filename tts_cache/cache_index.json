@@ -1,0 +1,26 @@
+{
+  "5dbabd8a982905a9e5a258ae8543c277": {
+    "file_path": "./tts_cache/5dbabd8a982905a9e5a258ae8543c277.wav",
+    "size_bytes": 618540,
+    "created": 1754715497.4071438,
+    "last_accessed": 1754715497.407145
+  },
+  "c3c41afef912a127ce5521a32eb42657": {
+    "file_path": "./tts_cache/c3c41afef912a127ce5521a32eb42657.wav",
+    "size_bytes": 763948,
+    "created": 1754715609.7462451,
+    "last_accessed": 1754715609.7462459
+  },
+  "a32d2ae442b0cfaaa0dfb2e46ebf292c": {
+    "file_path": "./tts_cache/a32d2ae442b0cfaaa0dfb2e46ebf292c.wav",
+    "size_bytes": 525356,
+    "created": 1754721435.448546,
+    "last_accessed": 1754721435.448546
+  },
+  "89d2c866066e6b090663334a52e4707c": {
+    "file_path": "./tts_cache/89d2c866066e6b090663334a52e4707c.wav",
+    "size_bytes": 580652,
+    "created": 1754721626.5689201,
+    "last_accessed": 1754721626.5689201
+  }
+}

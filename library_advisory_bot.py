@@ -1659,7 +1659,7 @@ and consider asking about specific aspects you'd like me to analyze.
             },
             "Express.js": {
                 "best_for": "APIs, real-time applications, Node.js environments, microservices",
-                "avoid_if": "CPU-intensive tasks, teams without JavaScript experience",
+                "avoid_if": "-intensive tasks, teams without JavaScript experience",
                 "migration": "Standard migration path from other Node.js frameworks",
                 "alternatives": "Fastify for performance, NestJS for structure"
             }

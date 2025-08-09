@@ -1,5 +1,5 @@
 # Library Advisory System Requirements
-# Web Application with Azure OpenAI integration
+# Web Application with Azure OpenAI, ChromaDB, and HuggingFace TTS integration
 
 # Web Framework
 Flask>=2.3.0               # Web framework for Python
@@ -10,9 +10,26 @@ openai>=1.12.0             # Azure OpenAI client
 python-dotenv>=1.0.0       # Environment variable management
 requests>=2.25.0           # HTTP requests for API calls
 
-# Optional dependencies for enhanced functionality:
+# ChromaDB for vector database and semantic search
+chromadb>=0.4.0            # Vector database for semantic search
+sentence-transformers>=2.2.0  # For generating embeddings
+numpy>=1.21.0              # Numerical operations for embeddings
+
+# HuggingFace TTS integration
+transformers>=4.30.0       # HuggingFace transformers library
+torch>=2.0.0               # PyTorch for TTS models
+torchaudio>=2.0.0          # Audio processing and generation
+soundfile>=0.12.0          # Audio file handling and I/O
+datasets>=2.10.0           # For loading speaker embeddings
+sentencepiece>=0.2.0       # Required for SpeechT5 tokenizer
+
+# Audio processing and caching
+librosa>=0.10.0            # Audio analysis and manipulation
+pydub>=0.25.0              # Audio format conversion
+
+# Enhanced functionality
 colorama>=0.4.4            # For Windows color support
-rich>=10.0.0               # For enhanced terminal formatting (future enhancement)
+rich>=10.0.0               # For enhanced terminal formatting
 
 # Core Python modules used:
 # - os
@@ -23,3 +40,10 @@ rich>=10.0.0               # For enhanced terminal formatting (future enhancemen
 # - typing
 # - dataclasses
 # - argparse
+# - asyncio
+# - concurrent.futures
+# - hashlib
+# - uuid
+# - io
+# - tempfile
+# - time

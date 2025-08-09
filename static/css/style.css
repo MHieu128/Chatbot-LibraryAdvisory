@@ -60,8 +60,8 @@ body {
 /* Chat interface styles */
 .chat-container {
     height: calc(100vh - 300px);
-    min-height: 450px;
-    max-height: 700px;
+    min-height: 400px;
+    max-height: 650px;
     border: 2px solid #e9ecef;
     border-radius: 12px;
     background: linear-gradient(to bottom, #ffffff, #f8f9fa);

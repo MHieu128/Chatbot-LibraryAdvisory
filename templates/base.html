@@ -144,6 +144,91 @@
             color: #6c757d;
             margin-top: 0.25rem;
         }
+        
+        /* Audio Controls Styling */
+        .audio-controls {
+            background-color: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 0.375rem;
+            margin-top: 0.5rem;
+        }
+        
+        .audio-controls audio {
+            max-width: 200px;
+            height: 32px;
+        }
+        
+        .response-header {
+            margin-bottom: 0.5rem;
+        }
+        
+        .response-header .badge {
+            font-size: 0.7rem;
+        }
+        
+        /* TTS Status Panel */
+        .tts-status-panel {
+            background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%);
+            border: 1px solid #e1bee7;
+            border-radius: 0.5rem;
+            transition: all 0.3s ease;
+        }
+        
+        .tts-status-panel:hover {
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        /* Button animations */
+        .btn-check:checked + .btn-outline-info {
+            background-color: #0dcaf0;
+            border-color: #0dcaf0;
+            color: white;
+        }
+        
+        .btn-check:checked + .btn-outline-info:hover {
+            background-color: #31d2f2;
+            border-color: #25cff2;
+        }
+        
+        /* Audio player customization */
+        audio::-webkit-media-controls-panel {
+            background-color: #f8f9fa;
+        }
+        
+        audio::-webkit-media-controls-play-button {
+            background-color: #0d6efd;
+            border-radius: 50%;
+        }
+        
+        /* Loading state for audio */
+        .audio-loading {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+        
+        .audio-loading::after {
+            content: "";
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 20px;
+            height: 20px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #0d6efd;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: translate(-50%, -50%) rotate(0deg); }
+            100% { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+        
+        /* Gap utility for older Bootstrap versions */
+        .gap-2 > * + * {
+            margin-left: 0.5rem;
+        }
     </style>
 </head>
 <body>
