@@ -5,6 +5,7 @@ A Flask-based web interface for the Library Advisory System
 """
 
 from flask import Flask, render_template, request, jsonify, session
+import html
 import os
 import json
 from datetime import datetime
@@ -12,7 +13,8 @@ import re
 from library_advisory_bot import LibraryAdvisoryBot, Colors
 
 app = Flask(__name__)
-app.secret_key = os.urandom(24)  # For session management
+# Prefer a stable secret key via env var; fallback to random for local dev
+app.secret_key = os.environ.get('FLASK_SECRET_KEY') or os.urandom(24)
 
 # Global bot instance
 bot = None
@@ -34,8 +36,8 @@ def format_response_for_web(response):
     if not response:
         return ""
     
-    # Clean ANSI codes
-    clean_response = clean_ansi_codes(response)
+    # Clean ANSI codes and escape HTML to prevent XSS
+    clean_response = html.escape(clean_ansi_codes(response))
     
     # Convert markdown-like formatting to HTML
     # Headers
@@ -126,11 +128,14 @@ def chat():
         if 'conversation_history' not in session:
             session['conversation_history'] = []
         
-        session['conversation_history'].append({
+        # Reassign to ensure Flask detects the session change
+        history = list(session['conversation_history'])
+        history.append({
             'user': user_message,
             'bot': formatted_response,
             'timestamp': datetime.now().strftime('%H:%M:%S')
         })
+        session['conversation_history'] = history
         
         return jsonify({
             'response': formatted_response,

@@ -22,6 +22,9 @@ try:
 except ImportError as e:
     print(f"Warning: Azure OpenAI dependencies not installed. Run: pip install -r requirements.txt")
     print(f"Error: {e}")
+    # Provide a no-op fallback for load_dotenv so the app can run without python-dotenv
+    def load_dotenv():
+        return None
     AZURE_OPENAI_AVAILABLE = False
 
 # Modern color scheme for terminal output
@@ -1392,12 +1395,17 @@ and consider asking about specific aspects you'd like me to analyze.
 
     def _get_risk_badge(self, risk_level: str) -> str:
         """Create colored risk level badge"""
-        if risk_level.lower() == "low":
+        risk_lower = risk_level.lower()
+        # Handle composite levels like "low-medium"
+        if "low" in risk_lower and "medium" in risk_lower:
+            return f"{Colors.INFO}{risk_level}{Colors.RESET}"
+        if "low" in risk_lower:
             return f"{Colors.SUCCESS}{risk_level}{Colors.RESET}"
-        elif risk_level.lower() == "medium":
+        if "medium" in risk_lower:
             return f"{Colors.WARNING}{risk_level}{Colors.RESET}"
-        else:
+        if "high" in risk_lower:
             return f"{Colors.ERROR}{risk_level}{Colors.RESET}"
+        return f"{Colors.MUTED}{risk_level}{Colors.RESET}"
 
     def _get_migration_risk_modern(self, lib_info: Dict) -> str:
         """Get modern migration risk assessment"""
