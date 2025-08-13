@@ -5,12 +5,12 @@ A Flask-based web interface for the Library Advisory System
 """
 
 from flask import Flask, render_template, request, jsonify, session
-import html
 import os
 import json
-from datetime import datetime
 import re
-from library_advisory_bot import LibraryAdvisoryBot, Colors
+import html
+from datetime import datetime
+from library_advisory_bot import LibraryAdvisoryBot
 
 app = Flask(__name__)
 # Prefer a stable secret key via env var; fallback to random for local dev
@@ -28,11 +28,10 @@ def init_bot():
 
 def clean_ansi_codes(text):
     """Remove ANSI color codes from text"""
-    ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
-    return ansi_escape.sub('', text)
+    return re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])').sub('', text)
 
 def format_response_for_web(response):
-    """Format bot response for web display"""
+    """Format bot response for web display with security"""
     if not response:
         return ""
     
@@ -40,7 +39,6 @@ def format_response_for_web(response):
     clean_response = html.escape(clean_ansi_codes(response))
     
     # Convert markdown-like formatting to HTML
-    # Headers
     clean_response = re.sub(r'^# (.+)$', r'<h1>\1</h1>', clean_response, flags=re.MULTILINE)
     clean_response = re.sub(r'^## (.+)$', r'<h2>\1</h2>', clean_response, flags=re.MULTILINE)
     clean_response = re.sub(r'^### (.+)$', r'<h3>\1</h3>', clean_response, flags=re.MULTILINE)
@@ -61,30 +59,53 @@ def format_response_for_web(response):
     
     return clean_response
 
-@app.route('/')
-def index():
-    """Main page"""
-    # Initialize session conversation history
+def handle_api_request(func, *args, **kwargs):
+    """Generic API request handler with error handling"""
+    try:
+        result = func(*args, **kwargs)
+        if isinstance(result, str):
+            return jsonify({'response': format_response_for_web(result)})
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'error': f'Error: {str(e)}'}), 500
+
+def update_conversation_history(user_message, bot_response):
+    """Update session conversation history safely"""
     if 'conversation_history' not in session:
         session['conversation_history'] = []
     
-    # Initialize bot
-    init_bot()
+    # Reassign to ensure Flask detects the session change
+    history = list(session['conversation_history'])
+    history.append({
+        'user': user_message,
+        'bot': format_response_for_web(bot_response),
+        'timestamp': datetime.now().strftime('%H:%M:%S')
+    })
+    session['conversation_history'] = history
+
+@app.route('/')
+def index():
+    """Main page"""
+    if 'conversation_history' not in session:
+        session['conversation_history'] = []
     
-    # Get available libraries for the sidebar
-    libraries = []
-    for lib_key, lib_info in bot.known_libraries.items():
-        libraries.append({
-            'key': lib_key,
-            'name': lib_info['name'],
-            'category': lib_info['category'],
-            'language': lib_info['language'],
-            'description': lib_info['description']
-        })
+    bot_instance = init_bot()
+    
+    # Get libraries for sidebar
+    libraries = [
+        {
+            'key': key,
+            'name': lib.name,
+            'category': lib.category,
+            'language': lib.language,
+            'description': lib.description
+        }
+        for key, lib in bot_instance.known_libraries.items()
+    ]
     
     return render_template('index.html', 
                          libraries=libraries,
-                         ai_enabled=bot.use_ai,
+                         ai_enabled=bot_instance.use_ai,
                          conversation_history=session['conversation_history'])
 
 @app.route('/chat', methods=['POST'])
@@ -96,27 +117,23 @@ def chat():
     if not user_message:
         return jsonify({'error': 'Empty message'}), 400
     
-    # Initialize bot
     bot_instance = init_bot()
     
-    # Add user message to bot's conversation history
+    # Add to bot's conversation history
     bot_instance.conversation_history.append({
         'timestamp': datetime.now().isoformat(),
         'user_input': user_message,
         'type': 'user'
     })
     
-    # Process the message
-    try:
+    def process_chat():
         response = bot_instance.process_input(user_message)
-        
         if response == "exit":
             response = "Thank you for using Library Advisory System! 👋"
         
-        # Clean and format response for web
         formatted_response = format_response_for_web(response) if response else "I'm sorry, I couldn't process your request."
         
-        # Add response to bot's conversation history
+        # Add to bot's history
         if response and response != "exit":
             bot_instance.conversation_history.append({
                 'timestamp': datetime.now().isoformat(),
@@ -124,61 +141,48 @@ def chat():
                 'type': 'assistant'
             })
         
-        # Add to session conversation history
-        if 'conversation_history' not in session:
-            session['conversation_history'] = []
+        # Update session
+        update_conversation_history(user_message, response)
         
-        # Reassign to ensure Flask detects the session change
-        history = list(session['conversation_history'])
-        history.append({
-            'user': user_message,
-            'bot': formatted_response,
-            'timestamp': datetime.now().strftime('%H:%M:%S')
-        })
-        session['conversation_history'] = history
-        
-        return jsonify({
+        return {
             'response': formatted_response,
             'timestamp': datetime.now().strftime('%H:%M:%S')
-        })
-        
-    except Exception as e:
-        return jsonify({'error': f'Error processing message: {str(e)}'}), 500
+        }
+    
+    return handle_api_request(process_chat)
 
 @app.route('/analyze/<library_name>')
 def analyze_library(library_name):
     """Analyze a specific library"""
     bot_instance = init_bot()
     
-    try:
+    def analyze():
         analysis = bot_instance.analyze_library(library_name)
-        formatted_analysis = format_response_for_web(analysis)
-        
-        return jsonify({
-            'analysis': formatted_analysis,
+        return {
+            'analysis': format_response_for_web(analysis),
             'library_name': library_name
-        })
-        
-    except Exception as e:
-        return jsonify({'error': f'Error analyzing library: {str(e)}'}), 500
+        }
+    
+    return handle_api_request(analyze)
 
 @app.route('/libraries')
 def get_libraries():
     """Get all available libraries"""
     bot_instance = init_bot()
     
-    libraries = []
-    for lib_key, lib_info in bot_instance.known_libraries.items():
-        libraries.append({
-            'key': lib_key,
-            'name': lib_info['name'],
-            'category': lib_info['category'],
-            'language': lib_info['language'],
-            'description': lib_info['description'],
-            'license': lib_info['license'],
-            'popularity': lib_info['popularity'],
-            'alternatives': lib_info.get('alternatives', [])
-        })
+    libraries = [
+        {
+            'key': key,
+            'name': lib.name,
+            'category': lib.category,
+            'language': lib.language,
+            'description': lib.description,
+            'license': lib.license,
+            'popularity': lib.popularity,
+            'alternatives': lib.alternatives
+        }
+        for key, lib in bot_instance.known_libraries.items()
+    ]
     
     return jsonify({'libraries': libraries})
 
@@ -199,18 +203,15 @@ def compare_libraries():
     
     bot_instance = init_bot()
     
-    try:
+    def compare():
         comparison = bot_instance.compare_libraries(lib1, lib2)
-        formatted_comparison = format_response_for_web(comparison)
-        
-        return jsonify({
-            'comparison': formatted_comparison,
+        return {
+            'comparison': format_response_for_web(comparison),
             'lib1': lib1,
             'lib2': lib2
-        })
-        
-    except Exception as e:
-        return jsonify({'error': f'Error comparing libraries: {str(e)}'}), 500
+        }
+    
+    return handle_api_request(compare)
 
 @app.route('/recommendations')
 def recommendations():
@@ -228,17 +229,14 @@ def get_recommendations():
     
     bot_instance = init_bot()
     
-    try:
+    def get_recs():
         recommendations = bot_instance.get_recommendations(category)
-        formatted_recommendations = format_response_for_web(recommendations)
-        
-        return jsonify({
-            'recommendations': formatted_recommendations,
+        return {
+            'recommendations': format_response_for_web(recommendations),
             'category': category
-        })
-        
-    except Exception as e:
-        return jsonify({'error': f'Error getting recommendations: {str(e)}'}), 500
+        }
+    
+    return handle_api_request(get_recs)
 
 @app.route('/save_conversation', methods=['POST'])
 def save_conversation():
@@ -248,19 +246,18 @@ def save_conversation():
     if not bot_instance.conversation_history:
         return jsonify({'error': 'No conversation to save'}), 400
     
-    try:
+    def save():
         filepath = bot_instance.save_conversation_to_markdown()
         if filepath:
-            return jsonify({
+            return {
                 'success': True,
                 'filepath': filepath,
                 'message': f'Conversation saved to {filepath}'
-            })
+            }
         else:
-            return jsonify({'error': 'Failed to save conversation'}), 500
-            
-    except Exception as e:
-        return jsonify({'error': f'Error saving conversation: {str(e)}'}), 500
+            raise Exception('Failed to save conversation')
+    
+    return handle_api_request(save)
 
 @app.route('/clear_conversation', methods=['POST'])
 def clear_conversation():
