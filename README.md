@@ -53,7 +53,7 @@ A comprehensive terminal chatbot for software library evaluation and recommendat
 
 ### Running Without AI
 
-The system can run in basic mode without Azure OpenAI if credentials are not configured. You'll still get structured analysis but without AI-enhanced insights.
+The system can run in basic mode without Azure OpenAI if credentials are not configured. You'll still get structured analysis, but without AI-enhanced insights.
 
 ## Usage
 
