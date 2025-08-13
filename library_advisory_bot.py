@@ -177,7 +177,7 @@ class LibraryData:
         return technical_db.get(self.name, {"complexity": 3, "performance": 3, "learning": 3})
 
 class LibraryAdvisoryBot:
-    """Optimized main chatbot class"""
+    """Optimized main chatbot class with caching"""
     
     def __init__(self):
         load_dotenv()
@@ -188,6 +188,9 @@ class LibraryAdvisoryBot:
         self.use_ai = False
         self._init_azure_openai()
         self.function_tools = self._get_function_tools()
+        # Add caching for expensive operations
+        self._analysis_cache = {}
+        self._registry_cache = {}
     
     def _init_azure_openai(self):
         """Initialize Azure OpenAI client"""
@@ -321,21 +324,36 @@ Format responses with clear sections: Overview, Registry Info, Advantages, Disad
             }
         }
     
-    def check_nuget_package(self, package_name: str) -> Dict:
-        """Check NuGet package information"""
+    def _check_package_registry(self, package_name: str, registry_type: str) -> Dict:
+        """Generic package registry checker with caching"""
+        # Check cache first
+        cache_key = f"{registry_type}:{package_name.lower()}"
+        if cache_key in self._registry_cache:
+            return self._registry_cache[cache_key]
+        
         try:
-            url = f"https://api.nuget.org/v3-flatcontainer/{package_name.lower()}/index.json"
-            response = requests.get(url, timeout=10)
+            if registry_type == "nuget":
+                url = f"https://api.nuget.org/v3-flatcontainer/{package_name.lower()}/index.json"
+                meta_url = f"https://api.nuget.org/v3/registration5-semver1/{package_name.lower()}/index.json"
+                pkg_url = f"https://www.nuget.org/packages/{package_name}"
+            else:  # npm
+                url = f"https://registry.npmjs.org/{package_name}"
+                meta_url = f"https://api.npmjs.org/downloads/point/last-week/{package_name}"
+                pkg_url = f"https://www.npmjs.com/package/{package_name}"
             
-            if response.status_code == 200:
-                versions_data = response.json()
-                latest_version = versions_data.get('versions', ['Unknown'])[-1]
+            response = requests.get(url, timeout=10)
+            if response.status_code != 200:
+                return {"status": "not_found", "package_name": package_name, "registry": registry_type.title()}
+            
+            data = response.json()
+            
+            if registry_type == "nuget":
+                latest_version = data.get('versions', ['Unknown'])[-1]
+                versions_count = len(data.get('versions', []))
                 
-                # Get metadata
-                metadata_url = f"https://api.nuget.org/v3/registration5-semver1/{package_name.lower()}/index.json"
-                meta_response = requests.get(metadata_url, timeout=10)
+                # Get NuGet metadata
+                meta_response = requests.get(meta_url, timeout=10)
                 metadata = {}
-                
                 if meta_response.status_code == 200:
                     meta_data = meta_response.json()
                     if 'items' in meta_data and meta_data['items']:
@@ -346,32 +364,12 @@ Format responses with clear sections: Overview, Registry Info, Advantages, Disad
                             "license": catalog.get('licenseExpression', 'Unknown'),
                             "published": catalog.get('published', 'Unknown')
                         }
-                
-                return {
-                    "status": "found", "package_name": package_name,
-                    "latest_version": latest_version, "registry": "NuGet",
-                    "metadata": metadata, "versions_count": len(versions_data.get('versions', [])),
-                    "registry_url": f"https://www.nuget.org/packages/{package_name}"
-                }
-            
-            return {"status": "not_found", "package_name": package_name, "registry": "NuGet"}
-            
-        except Exception as e:
-            return {"status": "error", "package_name": package_name, "registry": "NuGet", "error": str(e)}
-    
-    def check_npm_package(self, package_name: str) -> Dict:
-        """Check npm package information"""
-        try:
-            url = f"https://registry.npmjs.org/{package_name}"
-            response = requests.get(url, timeout=10)
-            
-            if response.status_code == 200:
-                data = response.json()
+            else:  # npm
                 latest_version = data.get('dist-tags', {}).get('latest', 'Unknown')
+                versions_count = len(data.get('versions', {}))
                 
-                # Get download stats
-                downloads_url = f"https://api.npmjs.org/downloads/point/last-week/{package_name}"
-                downloads_response = requests.get(downloads_url, timeout=5)
+                # Get npm download stats
+                downloads_response = requests.get(meta_url, timeout=5)
                 weekly_downloads = "Unknown"
                 if downloads_response.status_code == 200:
                     weekly_downloads = downloads_response.json().get('downloads', 'Unknown')
@@ -383,18 +381,30 @@ Format responses with clear sections: Overview, Registry Info, Advantages, Disad
                     "weekly_downloads": weekly_downloads,
                     "created": data.get('time', {}).get('created', 'Unknown')
                 }
-                
-                return {
-                    "status": "found", "package_name": package_name,
-                    "latest_version": latest_version, "registry": "npm",
-                    "metadata": metadata, "versions_count": len(data.get('versions', {})),
-                    "registry_url": f"https://www.npmjs.com/package/{package_name}"
-                }
             
-            return {"status": "not_found", "package_name": package_name, "registry": "npm"}
+            result = {
+                "status": "found", "package_name": package_name,
+                "latest_version": latest_version, "registry": registry_type.title(),
+                "metadata": metadata, "versions_count": versions_count,
+                "registry_url": pkg_url
+            }
+            
+            # Cache successful results
+            self._registry_cache[cache_key] = result
+            return result
             
         except Exception as e:
-            return {"status": "error", "package_name": package_name, "registry": "npm", "error": str(e)}
+            result = {"status": "error", "package_name": package_name, "registry": registry_type.title(), "error": str(e)}
+            # Don't cache errors
+            return result
+    
+    def check_nuget_package(self, package_name: str) -> Dict:
+        """Check NuGet package information"""
+        return self._check_package_registry(package_name, "nuget")
+    
+    def check_npm_package(self, package_name: str) -> Dict:
+        """Check npm package information"""
+        return self._check_package_registry(package_name, "npm")
     
     def _execute_function_call(self, function_name: str, arguments: Dict) -> str:
         """Execute function calls from OpenAI"""
@@ -723,46 +733,38 @@ Format responses with clear sections: Overview, Registry Info, Advantages, Disad
         original_input = user_input.strip()
         user_input = user_input.strip().lower()
         
-        # Handle commands
-        if user_input in ['exit', 'quit', 'bye', 'goodbye']:
-            return "exit"
+        # Command handlers mapping
+        command_handlers = {
+            ('exit', 'quit', 'bye', 'goodbye'): lambda: "exit",
+            ('help', '?'): lambda: self.display_help() or "",
+            ('list', 'libraries'): lambda: self.list_known_libraries() or "",
+            ('save', 'export'): self._handle_save_command,
+        }
         
-        if user_input in ['help', '?']:
-            self.display_help()
-            return ""
+        # Check direct commands
+        for commands, handler in command_handlers.items():
+            if user_input in commands:
+                return handler()
         
-        if user_input in ['list', 'libraries']:
-            self.list_known_libraries()
-            return ""
+        # Handle prefixed commands
+        prefix_handlers = [
+            ('ai ', lambda x: self._handle_ai_command(x)),
+            ('analyze ', lambda x: self.analyze_library(x)),
+            ('recommend ', lambda x: self.get_recommendations(x)),
+        ]
         
-        if user_input in ['save', 'export']:
-            if not self.conversation_history:
-                return f"{Style.WARNING}No conversation to save yet.{Style.RESET}"
-            filepath = self.save_conversation_to_markdown()
-            return f"{Style.SUCCESS}✓ Conversation saved to: {filepath}{Style.RESET}" if filepath else f"{Style.ERROR}Failed to save conversation.{Style.RESET}"
-        
-        # Handle AI command
-        if user_input.startswith('ai ') and self.use_ai:
-            query = original_input[3:].strip()
-            response = self._call_azure_openai(query)
-            return f"{Style.HEADER}🤖 AI Response:{Style.RESET}\n{response}" if response else f"{Style.ERROR}Couldn't process AI request.{Style.RESET}"
+        for prefix, handler in prefix_handlers:
+            if user_input.startswith(prefix):
+                return handler(original_input[len(prefix):].strip())
         
         # Handle comparisons
-        if ' vs ' in user_input or ' versus ' in user_input:
-            separator = ' vs ' if ' vs ' in user_input else ' versus '
-            parts = user_input.split(separator)
-            if len(parts) == 2:
-                lib1 = parts[0].replace('compare ', '').strip()
-                lib2 = parts[1].strip()
-                return self.compare_libraries(lib1, lib2)
-        
-        # Handle analyze commands
-        if user_input.startswith('analyze '):
-            return self.analyze_library(user_input[8:].strip())
-        
-        # Handle recommend commands
-        if user_input.startswith('recommend '):
-            return self.get_recommendations(user_input[10:].strip())
+        for separator in [' vs ', ' versus ']:
+            if separator in user_input:
+                parts = user_input.split(separator)
+                if len(parts) == 2:
+                    lib1 = parts[0].replace('compare ', '').strip()
+                    lib2 = parts[1].strip()
+                    return self.compare_libraries(lib1, lib2)
         
         # Handle general queries
         for keyword in ['what is ', 'tell me about ', 'about ']:
@@ -805,6 +807,20 @@ Format responses with clear sections: Overview, Registry Info, Advantages, Disad
 • "Tell me about Django"
 • "Recommend JavaScript frameworks"
 """
+    
+    def _handle_save_command(self) -> str:
+        """Handle save command"""
+        if not self.conversation_history:
+            return f"{Style.WARNING}No conversation to save yet.{Style.RESET}"
+        filepath = self.save_conversation_to_markdown()
+        return f"{Style.SUCCESS}✓ Conversation saved to: {filepath}{Style.RESET}" if filepath else f"{Style.ERROR}Failed to save conversation.{Style.RESET}"
+    
+    def _handle_ai_command(self, query: str) -> str:
+        """Handle AI command"""
+        if not self.use_ai:
+            return f"{Style.ERROR}AI features not available.{Style.RESET}"
+        response = self._call_azure_openai(query)
+        return f"{Style.HEADER}🤖 AI Response:{Style.RESET}\n{response}" if response else f"{Style.ERROR}Couldn't process AI request.{Style.RESET}"
     
     def run(self):
         """Main chat loop"""
