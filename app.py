@@ -9,15 +9,32 @@ import os
 import json
 import re
 import html
+import logging
 from datetime import datetime
+from functools import wraps
 from library_advisory_bot import LibraryAdvisoryBot
 
 app = Flask(__name__)
 # Prefer a stable secret key via env var; fallback to random for local dev
 app.secret_key = os.environ.get('FLASK_SECRET_KEY') or os.urandom(24)
 
+# Configure logging for Flask app
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 # Global bot instance
 bot = None
+
+def handle_api_errors(func):
+    """Decorator for API error handling"""
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            logger.error(f"API error in {func.__name__}: {str(e)}")
+            return jsonify({'error': f'Internal server error: {str(e)}'}), 500
+    return wrapper
 
 def init_bot():
     """Initialize the bot instance"""
@@ -109,6 +126,7 @@ def index():
                          conversation_history=session['conversation_history'])
 
 @app.route('/chat', methods=['POST'])
+@handle_api_errors
 def chat():
     """Handle chat messages"""
     data = request.get_json()
@@ -152,6 +170,7 @@ def chat():
     return handle_api_request(process_chat)
 
 @app.route('/analyze/<library_name>')
+@handle_api_errors
 def analyze_library(library_name):
     """Analyze a specific library"""
     bot_instance = init_bot()

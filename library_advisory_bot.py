@@ -9,11 +9,14 @@ import sys
 import json
 import re
 import requests
+import logging
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
 import argparse
 import html
+from functools import wraps
+import time
 
 # Import required packages for Azure OpenAI
 try:
@@ -27,6 +30,45 @@ except ImportError as e:
     def load_dotenv():
         return None
     AZURE_OPENAI_AVAILABLE = False
+
+# Configure logging
+os.makedirs('logs', exist_ok=True)  # Ensure logs directory exists
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('logs/library_advisor.log', encoding='utf-8'),
+        logging.StreamHandler(sys.stdout)
+    ]
+)
+logger = logging.getLogger(__name__)
+
+def handle_errors(default_return=None, log_error=True):
+    """Decorator for robust error handling"""
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            try:
+                return func(*args, **kwargs)
+            except Exception as e:
+                if log_error:
+                    logger.error(f"Error in {func.__name__}: {str(e)}")
+                return default_return
+        return wrapper
+    return decorator
+
+def monitor_performance(func):
+    """Decorator to monitor function performance"""
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        start_time = time.time()
+        result = func(*args, **kwargs)
+        end_time = time.time()
+        execution_time = end_time - start_time
+        if execution_time > 1.0:  # Log slow operations
+            logger.info(f"{func.__name__} took {execution_time:.2f} seconds")
+        return result
+    return wrapper
 
 # Consolidated styling system
 class Style:
@@ -176,8 +218,19 @@ class LibraryData:
         }
         return technical_db.get(self.name, {"complexity": 3, "performance": 3, "learning": 3})
 
+class Config:
+    """Configuration management"""
+    AZURE_OPENAI_ENDPOINT = os.getenv('AZURE_OPENAI_ENDPOINT')
+    AZURE_OPENAI_API_KEY = os.getenv('AZURE_OPENAI_API_KEY')
+    AZURE_OPENAI_API_VERSION = os.getenv('AZURE_OPENAI_API_VERSION', '2024-02-15-preview')
+    AZURE_OPENAI_DEPLOYMENT_NAME = os.getenv('AZURE_OPENAI_DEPLOYMENT_NAME', 'GPT-4o-mini')
+    OPENAI_TEMPERATURE = float(os.getenv('OPENAI_TEMPERATURE', '0.7'))
+    OPENAI_MAX_TOKENS = int(os.getenv('OPENAI_MAX_TOKENS', '2000'))
+    CACHE_MAX_SIZE = int(os.getenv('CACHE_MAX_SIZE', '100'))
+    LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
+
 class LibraryAdvisoryBot:
-    """Optimized main chatbot class with caching"""
+    """Optimized main chatbot class with caching and error handling"""
     
     def __init__(self):
         load_dotenv()
@@ -188,9 +241,12 @@ class LibraryAdvisoryBot:
         self.use_ai = False
         self._init_azure_openai()
         self.function_tools = self._get_function_tools()
-        # Add caching for expensive operations
+        # Add caching for expensive operations with size limits
         self._analysis_cache = {}
         self._registry_cache = {}
+        self._cache_max_size = Config.CACHE_MAX_SIZE
+        
+        logger.info("Library Advisory Bot initialized")
     
     def _init_azure_openai(self):
         """Initialize Azure OpenAI client"""
@@ -199,23 +255,19 @@ class LibraryAdvisoryBot:
             return
             
         try:
-            endpoint = os.getenv('AZURE_OPENAI_ENDPOINT')
-            api_key = os.getenv('AZURE_OPENAI_API_KEY')
-            api_version = os.getenv('AZURE_OPENAI_API_VERSION', '2024-02-15-preview')
-            
-            if not endpoint or not api_key:
+            if not Config.AZURE_OPENAI_ENDPOINT or not Config.AZURE_OPENAI_API_KEY:
                 print(f"{Style.WARNING}Azure OpenAI credentials not configured.{Style.RESET}")
                 return
                 
             self.azure_client = AzureOpenAI(
-                azure_endpoint=endpoint,
-                api_key=api_key,
-                api_version=api_version
+                azure_endpoint=Config.AZURE_OPENAI_ENDPOINT,
+                api_key=Config.AZURE_OPENAI_API_KEY,
+                api_version=Config.AZURE_OPENAI_API_VERSION
             )
             
-            self.deployment_name = os.getenv('AZURE_OPENAI_DEPLOYMENT_NAME', 'GPT-4o-mini')
-            self.temperature = float(os.getenv('OPENAI_TEMPERATURE', '0.7'))
-            self.max_tokens = int(os.getenv('OPENAI_MAX_TOKENS', '2000'))
+            self.deployment_name = Config.AZURE_OPENAI_DEPLOYMENT_NAME
+            self.temperature = Config.OPENAI_TEMPERATURE
+            self.max_tokens = Config.OPENAI_MAX_TOKENS
             self.use_ai = True
             print(f"{Style.SUCCESS}✓ Azure OpenAI initialized successfully{Style.RESET}")
             
@@ -389,7 +441,12 @@ Format responses with clear sections: Overview, Registry Info, Advantages, Disad
                 "registry_url": pkg_url
             }
             
-            # Cache successful results
+            # Cache successful results with size management
+            if len(self._registry_cache) >= self._cache_max_size:
+                # Remove oldest entry (simple LRU-like behavior)
+                oldest_key = next(iter(self._registry_cache))
+                del self._registry_cache[oldest_key]
+            
             self._registry_cache[cache_key] = result
             return result
             
@@ -398,10 +455,12 @@ Format responses with clear sections: Overview, Registry Info, Advantages, Disad
             # Don't cache errors
             return result
     
+    @handle_errors(default_return={"status": "error", "error": "Package check failed"})
     def check_nuget_package(self, package_name: str) -> Dict:
         """Check NuGet package information"""
         return self._check_package_registry(package_name, "nuget")
     
+    @handle_errors(default_return={"status": "error", "error": "Package check failed"})
     def check_npm_package(self, package_name: str) -> Dict:
         """Check npm package information"""
         return self._check_package_registry(package_name, "npm")
@@ -417,6 +476,7 @@ Format responses with clear sections: Overview, Registry Info, Advantages, Disad
         except Exception as e:
             return f"Error executing {function_name}: {str(e)}"
     
+    @monitor_performance
     def _call_azure_openai(self, user_query: str, context: str = "") -> Optional[str]:
         """Call Azure OpenAI with function calling support"""
         if not self.use_ai or not self.azure_client:
