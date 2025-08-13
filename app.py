@@ -48,7 +48,7 @@ def format_response_for_web(response):
     clean_response = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', clean_response)
     
     # Lists
-    clean_response = re.sub(r'^  • (.+)$', r'<li>\1</li>', clean_response, flags=re.MULTILINE)
+    clean_response = re.sub(r'^\s*•\s+(.*)$', r'<li>\1</li>', clean_response, flags=re.MULTILINE)
     
     # Add line breaks
     clean_response = clean_response.replace('\n', '<br>')

@@ -1756,10 +1756,11 @@ and consider asking about specific aspects you'd like me to analyze.
 
     def get_recommendations(self, category: str) -> str:
         """Get modern styled recommendations for a specific category"""
-        category_libraries = []
-        for lib_key, lib_info in self.known_libraries.items():
-            if category.lower() in lib_info['category'].lower():
-                category_libraries.append(lib_info)
+        category_lower = category.lower()
+        category_libraries = [
+            info for info in self.known_libraries.values()
+            if category_lower in info['category'].lower()
+        ]
         
         if not category_libraries:
             # No libraries found - show available categories
