@@ -299,7 +299,23 @@ class Config:
     LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
 
 class LibraryAdvisoryBot:
-    """Optimized main chatbot class with caching and error handling"""
+    """
+    Main chatbot class for library advisory system.
+    
+    Features:
+    - Library analysis and comparison
+    - AI-enhanced insights via Azure OpenAI
+    - Caching for improved performance
+    - Comprehensive error handling
+    - Package registry integration (npm, NuGet)
+    - Markdown conversation export
+    
+    Attributes:
+        conversation_history: List of conversation entries
+        known_libraries: Dictionary of library data
+        use_ai: Boolean indicating AI availability
+        azure_client: Azure OpenAI client instance
+    """
     
     def __init__(self):
         load_dotenv()
@@ -407,9 +423,12 @@ Format responses with clear sections: Overview, Registry Info, Advantages, Disad
             try:
                 with open(database_file, 'r', encoding='utf-8') as f:
                     raw_data = json.load(f)
-            except (json.JSONDecodeError, FileNotFoundError):
+                logger.info(f"Loaded {len(raw_data)} libraries from database")
+            except (json.JSONDecodeError, FileNotFoundError, UnicodeDecodeError, OSError) as e:
+                logger.warning(f"Failed to load database file: {e}. Using default data.")
                 raw_data = self._get_default_data()
         else:
+            logger.info("Database file not found, using default data")
             raw_data = self._get_default_data()
         
         # Convert to LibraryData objects
@@ -733,7 +752,24 @@ Format responses with clear sections: Overview, Registry Info, Advantages, Disad
         # Main header
         sections.append(Style.section_header(f"Library Analysis: {lib_data.name}", Style.ANALYSIS, Style.HEADER))
         
-        # Overview section with better formatting
+        # Overview section
+        sections.append(self._generate_overview_section(lib_data))
+        
+        # Advantages and disadvantages
+        sections.append(self._generate_advantages_section(lib_data))
+        sections.append(self._generate_disadvantages_section(lib_data))
+        
+        # Technical assessment
+        sections.append(self._generate_technical_section(lib_data))
+        
+        # Alternatives
+        if lib_data.alternatives:
+            sections.append(self._generate_alternatives_section(lib_data))
+        
+        return "\n".join(sections)
+    
+    def _generate_overview_section(self, lib_data: LibraryData) -> str:
+        """Generate overview section"""
         overview_items = [
             f"{lib_data.description}",
             "",
@@ -743,27 +779,29 @@ Format responses with clear sections: Overview, Registry Info, Advantages, Disad
             Style.key_value("Popularity", lib_data.popularity, Style.STAR)
         ]
         overview = "\n".join(overview_items)
-        sections.append(Style.card("Overview", overview, Style.INFO_ICON, Style.PRIMARY))
-        
-        # Advantages with better list formatting
+        return Style.card("Overview", overview, Style.INFO_ICON, Style.PRIMARY)
+    
+    def _generate_advantages_section(self, lib_data: LibraryData) -> str:
+        """Generate advantages section"""
         adv_items = []
         for k, v in lib_data.advantages.items():
             adv_items.append(Style.list_item(f"{Style.BOLD}{k}{Style.RESET}: {v}", Style.CHECK))
-        sections.append(Style.card("Key Advantages", "\n".join(adv_items), Style.SUCCESS_ICON, Style.SUCCESS))
-        
-        # Disadvantages with better list formatting
+        return Style.card("Key Advantages", "\n".join(adv_items), Style.SUCCESS_ICON, Style.SUCCESS)
+    
+    def _generate_disadvantages_section(self, lib_data: LibraryData) -> str:
+        """Generate disadvantages section"""
         dis_items = []
         for k, v in lib_data.disadvantages.items():
             dis_items.append(Style.list_item(f"{Style.BOLD}{k}{Style.RESET}: {v}", Style.CROSS))
-        sections.append(Style.card("Potential Drawbacks", "\n".join(dis_items), Style.WARNING_ICON, Style.WARNING))
-        
-        # Technical considerations with visual indicators
+        return Style.card("Potential Drawbacks", "\n".join(dis_items), Style.WARNING_ICON, Style.WARNING)
+    
+    def _generate_technical_section(self, lib_data: LibraryData) -> str:
+        """Generate technical assessment section"""
         tech = lib_data.technical
         complexity_desc = ["Very Easy", "Easy", "Moderate", "Hard", "Very Hard"][tech['complexity']]
         perf_desc = ["Poor", "Fair", "Good", "Very Good", "Excellent"][tech['performance']]
         learn_desc = ["Very Easy", "Easy", "Moderate", "Hard", "Very Hard"][tech['learning']]
         
-        # Add visual indicators for ratings
         def get_rating_visual(rating: int) -> str:
             stars = "★" * rating + "☆" * (5 - rating)
             return f"{stars} ({rating}/5)"
@@ -773,16 +811,14 @@ Format responses with clear sections: Overview, Registry Info, Advantages, Disad
             Style.key_value("Performance Rating", f"{perf_desc} {get_rating_visual(tech['performance'])}", Style.CHART),
             Style.key_value("Learning Curve", f"{learn_desc} {get_rating_visual(tech['learning'])}", Style.LIGHTBULB)
         ]
-        sections.append(Style.card("Technical Assessment", "\n".join(tech_items), Style.GEAR, Style.INFO))
-        
-        # Alternatives with better presentation
-        if lib_data.alternatives:
-            alt_items = []
-            for i, alt in enumerate(lib_data.alternatives[:5], 1):
-                alt_items.append(Style.list_item(alt, f"{i}.", 0))
-            sections.append(Style.card("Similar Libraries & Alternatives", "\n".join(alt_items), Style.COMPARE, Style.MUTED))
-        
-        return "\n".join(sections)
+        return Style.card("Technical Assessment", "\n".join(tech_items), Style.GEAR, Style.INFO)
+    
+    def _generate_alternatives_section(self, lib_data: LibraryData) -> str:
+        """Generate alternatives section"""
+        alt_items = []
+        for i, alt in enumerate(lib_data.alternatives[:5], 1):
+            alt_items.append(Style.list_item(alt, f"{i}.", 0))
+        return Style.card("Similar Libraries & Alternatives", "\n".join(alt_items), Style.COMPARE, Style.MUTED)
     
     def _generate_unknown_analysis(self, library_name: str) -> str:
         """Generate analysis for unknown libraries"""
@@ -914,7 +950,7 @@ Format responses with clear sections: Overview, Registry Info, Advantages, Disad
         try:
             reports_dir = "reports"
             if not os.path.exists(reports_dir):
-                os.makedirs(reports_dir)
+                os.makedirs(reports_dir, exist_ok=True)
             
             filepath = os.path.join(reports_dir, filename)
             
@@ -948,7 +984,8 @@ Format responses with clear sections: Overview, Registry Info, Advantages, Disad
             print(f"{Style.SUCCESS}✓ Conversation saved to: {filepath}{Style.RESET}")
             return filepath
             
-        except Exception as e:
+        except (OSError, IOError, UnicodeEncodeError) as e:
+            logger.error(f"Error saving conversation: {e}")
             print(f"{Style.ERROR}Error saving conversation: {e}{Style.RESET}")
             return None
     

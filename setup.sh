@@ -25,8 +25,29 @@ fi
 # Setup environment file
 if [ ! -f ".env" ]; then
     echo "⚙️ Setting up environment configuration..."
-    cp .env.example .env
-    echo "✓ Created .env file from template"
+    if [ -f ".env.example" ]; then
+        cp .env.example .env
+        echo "✓ Created .env file from template"
+    else
+        echo "⚠️ .env.example not found, creating basic .env file..."
+        cat > .env << 'EOF'
+# Azure OpenAI Configuration (Optional - for AI features)
+AZURE_OPENAI_ENDPOINT=https://your-resource-name.openai.azure.com/
+AZURE_OPENAI_API_KEY=your-api-key-here
+AZURE_OPENAI_API_VERSION=2024-02-15-preview
+AZURE_OPENAI_DEPLOYMENT_NAME=GPT-4o-mini
+
+# Flask Configuration
+FLASK_SECRET_KEY=your-secret-key-here-change-in-production
+
+# Application Settings
+OPENAI_TEMPERATURE=0.7
+OPENAI_MAX_TOKENS=2000
+CACHE_MAX_SIZE=100
+LOG_LEVEL=INFO
+EOF
+        echo "✓ Created basic .env file"
+    fi
     echo ""
     echo "📝 Please edit .env file with your Azure OpenAI credentials:"
     echo "   - AZURE_OPENAI_ENDPOINT"

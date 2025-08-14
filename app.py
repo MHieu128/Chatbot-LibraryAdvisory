@@ -12,7 +12,13 @@ import html
 import logging
 from datetime import datetime
 from functools import wraps
+from typing import Dict, Any, Optional
 from library_advisory_bot import LibraryAdvisoryBot
+
+# Constants
+DEFAULT_ERROR_MESSAGE = "I'm sorry, I couldn't process your request."
+CONVERSATION_HISTORY_KEY = 'conversation_history'
+MAX_CONTEXT_LENGTH = 500
 
 app = Flask(__name__)
 # Prefer a stable secret key via env var; fallback to random for local dev
@@ -23,7 +29,24 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Global bot instance
-bot = None
+bot: Optional[LibraryAdvisoryBot] = None
+
+# Precompiled regex patterns for performance
+ANSI_RE = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
+BOX_TOP_RE = re.compile(r'^┌[─]+┐$', flags=re.MULTILINE)
+BOX_BOTTOM_RE = re.compile(r'^└[─]+┘$', flags=re.MULTILINE)
+BOX_LINE_RE = re.compile(r'^│(.*)│$', flags=re.MULTILINE)
+SECTION_DIVIDER_RE = re.compile(r'^═+$', flags=re.MULTILINE)
+CONTENT_DIVIDER_RE = re.compile(r'^[\-\u2500─]{3,}$', flags=re.MULTILINE)
+H1_RE = re.compile(r'^# (.+)$', flags=re.MULTILINE)
+H2_RE = re.compile(r'^## (.+)$', flags=re.MULTILINE)
+H3_RE = re.compile(r'^### (.+)$', flags=re.MULTILINE)
+H4_RE = re.compile(r'^#### (.+)$', flags=re.MULTILINE)
+BOLD_RE = re.compile(r'\*\*(.+?)\*\*')
+ITALIC_RE = re.compile(r'\*(.+?)\*')
+UNORDERED_LIST_RE = re.compile(r'^\s*•\s+(.*)$', flags=re.MULTILINE)
+ORDERED_LIST_RE = re.compile(r'^\s*(\d+)\.\s+(.*)$', flags=re.MULTILINE)
+KV_RE = re.compile(r'(\w+):\s*([^<\n]+)')
 
 def handle_api_errors(func):
     """Decorator for API error handling"""
@@ -36,39 +59,39 @@ def handle_api_errors(func):
             return jsonify({'error': f'Internal server error: {str(e)}'}), 500
     return wrapper
 
-def init_bot():
+def init_bot() -> LibraryAdvisoryBot:
     """Initialize the bot instance"""
     global bot
     if bot is None:
         bot = LibraryAdvisoryBot()
     return bot
 
-def clean_ansi_codes(text):
+def clean_ansi_codes(text: str) -> str:
     """Remove ANSI color codes from text"""
-    return re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])').sub('', text)
+    return ANSI_RE.sub('', text)
 
-def format_response_for_web(response):
+def format_response_for_web(response: Any) -> str:
     """Format bot response for web display with enhanced formatting and security"""
     if not response:
         return ""
     
     # Clean ANSI codes and escape HTML to prevent XSS
-    clean_response = html.escape(clean_ansi_codes(response))
+    clean_response = html.escape(clean_ansi_codes(str(response)))
     
     # Convert box drawing characters and borders to styled HTML
-    clean_response = re.sub(r'^┌[─]+┐$', '<div class="analysis-card-border-top"></div>', clean_response, flags=re.MULTILINE)
-    clean_response = re.sub(r'^└[─]+┘$', '<div class="analysis-card-border-bottom"></div>', clean_response, flags=re.MULTILINE)
-    clean_response = re.sub(r'^│(.*)│$', r'<div class="analysis-card-content">\1</div>', clean_response, flags=re.MULTILINE)
+    clean_response = BOX_TOP_RE.sub('<div class="analysis-card-border-top"></div>', clean_response)
+    clean_response = BOX_BOTTOM_RE.sub('<div class="analysis-card-border-bottom"></div>', clean_response)
+    clean_response = BOX_LINE_RE.sub(r'<div class="analysis-card-content">\1</div>', clean_response)
     
     # Convert section headers with improved styling
-    clean_response = re.sub(r'^═+$', '<hr class="section-divider">', clean_response, flags=re.MULTILINE)
-    clean_response = re.sub(r'^[\-\u2500─]{3,}$', '<hr class="content-divider">', clean_response, flags=re.MULTILINE)
+    clean_response = SECTION_DIVIDER_RE.sub('<hr class="section-divider">', clean_response)
+    clean_response = CONTENT_DIVIDER_RE.sub('<hr class="content-divider">', clean_response)
     
     # Enhanced markdown-like formatting
-    clean_response = re.sub(r'^# (.+)$', r'<h1 class="analysis-title"><i class="fas fa-search me-2"></i>\1</h1>', clean_response, flags=re.MULTILINE)
-    clean_response = re.sub(r'^## (.+)$', r'<h2 class="analysis-section">\1</h2>', clean_response, flags=re.MULTILINE)
-    clean_response = re.sub(r'^### (.+)$', r'<h3 class="analysis-subsection">\1</h3>', clean_response, flags=re.MULTILINE)
-    clean_response = re.sub(r'^#### (.+)$', r'<h4 class="analysis-subheading">\1</h4>', clean_response, flags=re.MULTILINE)
+    clean_response = H1_RE.sub(r'<h1 class="analysis-title"><i class="fas fa-search me-2"></i>\1</h1>', clean_response)
+    clean_response = H2_RE.sub(r'<h2 class="analysis-section">\1</h2>', clean_response)
+    clean_response = H3_RE.sub(r'<h3 class="analysis-subsection">\1</h3>', clean_response)
+    clean_response = H4_RE.sub(r'<h4 class="analysis-subheading">\1</h4>', clean_response)
     
     # Convert emojis and special characters to better web display
     emoji_map = {
@@ -98,15 +121,15 @@ def format_response_for_web(response):
         clean_response = clean_response.replace(emoji, icon)
     
     # Enhanced text formatting
-    clean_response = re.sub(r'\*\*(.+?)\*\*', r'<strong class="text-primary">\1</strong>', clean_response)
-    clean_response = re.sub(r'\*(.+?)\*', r'<em>\1</em>', clean_response)
+    clean_response = BOLD_RE.sub(r'<strong class="text-primary">\1</strong>', clean_response)
+    clean_response = ITALIC_RE.sub(r'<em>\1</em>', clean_response)
     
     # Better list handling with improved styling
-    clean_response = re.sub(r'^\s*•\s+(.*)$', r'<li class="analysis-list-item">\1</li>', clean_response, flags=re.MULTILINE)
-    clean_response = re.sub(r'^\s*(\d+)\.\s+(.*)$', r'<li class="analysis-numbered-item"><span class="item-number">\1</span>\2</li>', clean_response, flags=re.MULTILINE)
+    clean_response = UNORDERED_LIST_RE.sub(r'<li class="analysis-list-item">\1</li>', clean_response)
+    clean_response = ORDERED_LIST_RE.sub(r'<li class="analysis-numbered-item"><span class="item-number">\1</span>\2</li>', clean_response)
     
     # Handle key-value pairs with better styling
-    clean_response = re.sub(r'(\w+):\s*([^<\n]+)', r'<span class="key-value-pair"><strong class="kv-key">\1:</strong> <span class="kv-value">\2</span></span>', clean_response)
+    clean_response = KV_RE.sub(r'<span class="key-value-pair"><strong class="kv-key">\1:</strong> <span class="kv-value">\2</span></span>', clean_response)
     
     # Add line breaks
     clean_response = clean_response.replace('\n', '<br>')
@@ -139,25 +162,36 @@ def handle_api_request(func, *args, **kwargs):
     except Exception as e:
         return jsonify({'error': f'Error: {str(e)}'}), 500
 
-def update_conversation_history(user_message, bot_response):
+def update_conversation_history(user_message: str, bot_response: str, is_formatted: bool = False) -> None:
     """Update session conversation history safely"""
-    if 'conversation_history' not in session:
-        session['conversation_history'] = []
+    if CONVERSATION_HISTORY_KEY not in session:
+        session[CONVERSATION_HISTORY_KEY] = []
     
     # Reassign to ensure Flask detects the session change
-    history = list(session['conversation_history'])
+    history = list(session[CONVERSATION_HISTORY_KEY])
     history.append({
         'user': user_message,
-        'bot': format_response_for_web(bot_response),
+        'bot': bot_response if is_formatted else format_response_for_web(bot_response),
         'timestamp': datetime.now().strftime('%H:%M:%S')
     })
-    session['conversation_history'] = history
+    session[CONVERSATION_HISTORY_KEY] = history
+
+@app.after_request
+def set_security_headers(response):
+    """Add basic security headers without breaking inline scripts/styles."""
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['Referrer-Policy'] = 'no-referrer-when-downgrade'
+    response.headers['X-Frame-Options'] = 'SAMEORIGIN'
+    response.headers['Permissions-Policy'] = 'geolocation=(), microphone=(), camera=()'
+    # Relaxed CSP to allow Bootstrap CDN and inline scripts used in templates
+    response.headers['Content-Security-Policy'] = "default-src 'self' https:; img-src 'self' data: https:; style-src 'self' 'unsafe-inline' https:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; font-src 'self' https: data:;"
+    return response
 
 @app.route('/')
 def index():
     """Main page"""
-    if 'conversation_history' not in session:
-        session['conversation_history'] = []
+    if CONVERSATION_HISTORY_KEY not in session:
+        session[CONVERSATION_HISTORY_KEY] = []
     
     bot_instance = init_bot()
     
@@ -176,7 +210,7 @@ def index():
     return render_template('index.html', 
                          libraries=libraries,
                          ai_enabled=bot_instance.use_ai,
-                         conversation_history=session['conversation_history'])
+                         conversation_history=session[CONVERSATION_HISTORY_KEY])
 
 @app.route('/chat', methods=['POST'])
 @handle_api_errors
@@ -202,7 +236,7 @@ def chat():
         if response == "exit":
             response = "Thank you for using Library Advisory System! 👋"
         
-        formatted_response = format_response_for_web(response) if response else "I'm sorry, I couldn't process your request."
+        formatted_response = format_response_for_web(response) if response else DEFAULT_ERROR_MESSAGE
         
         # Add to bot's history
         if response and response != "exit":
@@ -213,7 +247,7 @@ def chat():
             })
         
         # Update session
-        update_conversation_history(user_message, response)
+        update_conversation_history(user_message, formatted_response, is_formatted=True)
         
         return {
             'response': formatted_response,
@@ -334,7 +368,7 @@ def save_conversation():
 @app.route('/clear_conversation', methods=['POST'])
 def clear_conversation():
     """Clear conversation history"""
-    session['conversation_history'] = []
+    session[CONVERSATION_HISTORY_KEY] = []
     
     # Also clear bot's history
     bot_instance = init_bot()

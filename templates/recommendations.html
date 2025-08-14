@@ -200,7 +200,7 @@ function getRecommendations() {
     const category = document.getElementById('categoryInput').value.trim();
     
     if (!category) {
-        alert('Please enter a category or technology');
+        showToast('Please enter a category or technology', 'warning');
         return;
     }
     
@@ -220,14 +220,15 @@ function getRecommendations() {
     .then(data => {
         loadingModal.hide();
         if (data.error) {
-            alert('Error: ' + data.error);
+            showToast('Error: ' + data.error, 'error');
         } else {
             displayRecommendations(data.recommendations, data.category);
+            showToast('Recommendations ready', 'success');
         }
     })
     .catch(error => {
         loadingModal.hide();
-        alert('Error getting recommendations');
+        showToast('Error getting recommendations', 'error');
         console.error('Error:', error);
     });
 }
@@ -261,6 +262,7 @@ function downloadRecommendations() {
     a.click();
     window.URL.revokeObjectURL(url);
     document.body.removeChild(a);
+    showToast('Recommendations downloaded', 'info');
 }
 
 // Auto-focus on input when page loads

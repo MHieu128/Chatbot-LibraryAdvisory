@@ -170,13 +170,16 @@ function sendMessage() {
         loadingModal.hide();
         if (data.error) {
             addMessage('Error: ' + data.error, 'bot');
+            showToast('Failed to send message', 'error');
         } else {
             addMessage(data.response, 'bot', data.timestamp);
+            showToast('Response received', 'success');
         }
     })
     .catch(error => {
         loadingModal.hide();
         addMessage('Error: Failed to send message', 'bot');
+        showToast('Network error while sending', 'error');
         console.error('Error:', error);
     });
 }
@@ -240,10 +243,11 @@ function clearConversation() {
                         </div>
                     </div>
                 `;
+                showToast('Conversation cleared', 'info');
             }
         })
         .catch(error => {
-            alert('Error clearing conversation');
+            showToast('Error clearing conversation', 'error');
             console.error('Error:', error);
         });
     }
@@ -259,13 +263,13 @@ function saveConversation() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            alert(`Conversation saved successfully to: ${data.filepath}`);
+            showToast(`Saved to: ${data.filepath}`, 'success');
         } else {
-            alert('Error: ' + data.error);
+            showToast('Failed to save conversation', 'error');
         }
     })
     .catch(error => {
-        alert('Error saving conversation');
+        showToast('Error saving conversation', 'error');
         console.error('Error:', error);
     });
 }

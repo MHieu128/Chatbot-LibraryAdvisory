@@ -17,12 +17,67 @@ body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
-/* Sidebar styles */
-.sidebar {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    min-height: 100vh;
-    box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+/* Dark theme support */
+[data-theme="dark"] body,
+[data-theme="dark"] {
+    background-color: #0f1115;
+    color: #e6e6e6;
 }
+[data-theme="dark"] .navbar {
+    background-color: #111827 !important;
+}
+[data-theme="dark"] .sidebar {
+    background: #111827;
+    border-right-color: #1f2937;
+}
+[data-theme="dark"] .card {
+    background-color: #111827;
+    color: #e6e6e6;
+    box-shadow: 0 2px 15px rgba(0,0,0,0.4);
+}
+[data-theme="dark"] .card-header {
+    background-color: #0b1220;
+    color: #e6e6e6;
+}
+[data-theme="dark"] .form-control,
+[data-theme="dark"] .chat-input {
+    background-color: #0b0d12;
+    color: #e6e6e6;
+    border-color: #2a2f3a;
+}
+[data-theme="dark"] .form-control:focus,
+[data-theme="dark"] .chat-input:focus {
+    box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+    border-color: #667eea;
+}
+[data-theme="dark"] .chat-container {
+    background: linear-gradient(to bottom, #0b0d12, #0f1115);
+    border-color: #1f2937;
+}
+[data-theme="dark"] .user-message {
+    background: linear-gradient(135deg, #4f46e5, #7c3aed);
+}
+[data-theme="dark"] .bot-message {
+    background-color: #0b0d12;
+    border-color: #1f2937;
+}
+[data-theme="dark"] .analysis-card {
+    background: linear-gradient(135deg, #0b0d12, #0f1115);
+    border-color: #1f2937;
+}
+[data-theme="dark"] .analysis-list-item:hover,
+[data-theme="dark"] .analysis-numbered-item:hover {
+    background-color: #0f1115;
+}
+[data-theme="dark"] .section-divider {
+    background: linear-gradient(90deg, #667eea, #22d3ee);
+}
+[data-theme="dark"] .content-divider {
+    background-color: #1f2937;
+}
+
+/* Sidebar styles */
+/* Gradient sidebar accent removed in favor of clean layout; gradient kept for user bubbles */
 
 .sidebar .nav-link {
     color: rgba(255, 255, 255, 0.8);
@@ -46,6 +101,53 @@ body {
 .sidebar .nav-link i {
     width: 20px;
     text-align: center;
+}
+
+/* Base layout styles */
+.sidebar {
+    height: 100vh;
+    overflow-y: auto;
+    background-color: #ffffff;
+    border-right: 1px solid #dee2e6;
+}
+
+.navbar-brand {
+    font-weight: bold;
+}
+
+.status-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 0.5rem;
+}
+
+.status-online {
+    background-color: #28a745;
+}
+
+.status-offline {
+    background-color: #dc3545;
+}
+
+.quick-actions {
+    position: sticky;
+    top: 0;
+    background-color: white;
+    z-index: 100;
+    padding: 1rem 0;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.library-card {
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.library-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
 }
 
 /* Main content area */
@@ -132,6 +234,48 @@ body {
 
 .message.bot .message-time {
     color: #6c757d;
+}
+
+/* Additional message styles for compatibility */
+.user-message {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: #ffffff;
+    margin-left: 20%;
+    margin-right: 0.5rem;
+    text-align: right;
+    margin-bottom: 1rem;
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+    word-wrap: break-word;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    max-width: 100%;
+}
+
+.user-message .timestamp {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.8rem;
+    margin-top: 0.25rem;
+}
+
+.bot-message {
+    background-color: #ffffff;
+    border: 1px solid #dee2e6;
+    margin-right: 20%;
+    margin-left: 0.5rem;
+    margin-bottom: 1rem;
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+    word-wrap: break-word;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    max-width: 100%;
+}
+
+.bot-message .timestamp {
+    color: #6c757d;
+    font-size: 0.8rem;
+    margin-top: 0.25rem;
 }
 
 /* Input area styles */
@@ -369,6 +513,10 @@ body {
     border-radius: 6px;
     overflow-x: auto;
     margin: 8px 0;
+}
+[data-theme="dark"] .response-content code,
+[data-theme="dark"] .response-content pre {
+    background-color: #0b0d12;
 }
 
 /* Improve input area */

@@ -114,12 +114,12 @@ function compareLibraries() {
     const lib2 = document.getElementById('library2').value.trim();
     
     if (!lib1 || !lib2) {
-        alert('Please enter both library names');
+        showToast('Please enter both library names', 'warning');
         return;
     }
     
     if (lib1.toLowerCase() === lib2.toLowerCase()) {
-        alert('Please choose two different libraries to compare');
+        showToast('Choose two different libraries to compare', 'warning');
         return;
     }
     
@@ -139,14 +139,15 @@ function compareLibraries() {
     .then(data => {
         loadingModal.hide();
         if (data.error) {
-            alert('Error: ' + data.error);
+            showToast('Error: ' + data.error, 'error');
         } else {
             displayComparison(data.comparison, data.lib1, data.lib2);
+            showToast('Comparison ready', 'success');
         }
     })
     .catch(error => {
         loadingModal.hide();
-        alert('Error comparing libraries');
+        showToast('Error comparing libraries', 'error');
         console.error('Error:', error);
     });
 }
@@ -180,6 +181,7 @@ function downloadComparison() {
     a.click();
     window.URL.revokeObjectURL(url);
     document.body.removeChild(a);
+    showToast('Comparison downloaded', 'info');
 }
 
 // Handle Enter key in input fields
