@@ -48,31 +48,84 @@ def clean_ansi_codes(text):
     return re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])').sub('', text)
 
 def format_response_for_web(response):
-    """Format bot response for web display with security"""
+    """Format bot response for web display with enhanced formatting and security"""
     if not response:
         return ""
     
     # Clean ANSI codes and escape HTML to prevent XSS
     clean_response = html.escape(clean_ansi_codes(response))
     
-    # Convert markdown-like formatting to HTML
-    clean_response = re.sub(r'^# (.+)$', r'<h1>\1</h1>', clean_response, flags=re.MULTILINE)
-    clean_response = re.sub(r'^## (.+)$', r'<h2>\1</h2>', clean_response, flags=re.MULTILINE)
-    clean_response = re.sub(r'^### (.+)$', r'<h3>\1</h3>', clean_response, flags=re.MULTILINE)
-    clean_response = re.sub(r'^#### (.+)$', r'<h4>\1</h4>', clean_response, flags=re.MULTILINE)
+    # Convert box drawing characters and borders to styled HTML
+    clean_response = re.sub(r'^┌[─]+┐$', '<div class="analysis-card-border-top"></div>', clean_response, flags=re.MULTILINE)
+    clean_response = re.sub(r'^└[─]+┘$', '<div class="analysis-card-border-bottom"></div>', clean_response, flags=re.MULTILINE)
+    clean_response = re.sub(r'^│(.*)│$', r'<div class="analysis-card-content">\1</div>', clean_response, flags=re.MULTILINE)
     
-    # Bold text
-    clean_response = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', clean_response)
+    # Convert section headers with improved styling
+    clean_response = re.sub(r'^═+$', '<hr class="section-divider">', clean_response, flags=re.MULTILINE)
+    clean_response = re.sub(r'^[\-\u2500─]{3,}$', '<hr class="content-divider">', clean_response, flags=re.MULTILINE)
     
-    # Lists
-    clean_response = re.sub(r'^\s*•\s+(.*)$', r'<li>\1</li>', clean_response, flags=re.MULTILINE)
+    # Enhanced markdown-like formatting
+    clean_response = re.sub(r'^# (.+)$', r'<h1 class="analysis-title"><i class="fas fa-search me-2"></i>\1</h1>', clean_response, flags=re.MULTILINE)
+    clean_response = re.sub(r'^## (.+)$', r'<h2 class="analysis-section">\1</h2>', clean_response, flags=re.MULTILINE)
+    clean_response = re.sub(r'^### (.+)$', r'<h3 class="analysis-subsection">\1</h3>', clean_response, flags=re.MULTILINE)
+    clean_response = re.sub(r'^#### (.+)$', r'<h4 class="analysis-subheading">\1</h4>', clean_response, flags=re.MULTILINE)
+    
+    # Convert emojis and special characters to better web display
+    emoji_map = {
+        '📚': '<i class="fas fa-book text-primary"></i>',
+        '🔍': '<i class="fas fa-search text-info"></i>',
+        '✅': '<i class="fas fa-check-circle text-success"></i>',
+        '⚠️': '<i class="fas fa-exclamation-triangle text-warning"></i>',
+        '❌': '<i class="fas fa-times-circle text-danger"></i>',
+        'ℹ️': '<i class="fas fa-info-circle text-info"></i>',
+        '⭐': '<i class="fas fa-star text-warning"></i>',
+        '→': '<i class="fas fa-arrow-right text-muted"></i>',
+        '✓': '<i class="fas fa-check text-success"></i>',
+        '✗': '<i class="fas fa-times text-danger"></i>',
+        '⚙️': '<i class="fas fa-cog text-secondary"></i>',
+        '🛡️': '<i class="fas fa-shield-alt text-primary"></i>',
+        '💰': '<i class="fas fa-dollar-sign text-success"></i>',
+        '📊': '<i class="fas fa-chart-bar text-info"></i>',
+        '🎯': '<i class="fas fa-bullseye text-primary"></i>',
+        '💡': '<i class="fas fa-lightbulb text-warning"></i>',
+        '⚖️': '<i class="fas fa-balance-scale text-secondary"></i>',
+        '🤖': '<i class="fas fa-robot text-primary"></i>',
+        '★': '<i class="fas fa-star text-warning"></i>',
+        '☆': '<i class="far fa-star text-muted"></i>'
+    }
+    
+    for emoji, icon in emoji_map.items():
+        clean_response = clean_response.replace(emoji, icon)
+    
+    # Enhanced text formatting
+    clean_response = re.sub(r'\*\*(.+?)\*\*', r'<strong class="text-primary">\1</strong>', clean_response)
+    clean_response = re.sub(r'\*(.+?)\*', r'<em>\1</em>', clean_response)
+    
+    # Better list handling with improved styling
+    clean_response = re.sub(r'^\s*•\s+(.*)$', r'<li class="analysis-list-item">\1</li>', clean_response, flags=re.MULTILINE)
+    clean_response = re.sub(r'^\s*(\d+)\.\s+(.*)$', r'<li class="analysis-numbered-item"><span class="item-number">\1</span>\2</li>', clean_response, flags=re.MULTILINE)
+    
+    # Handle key-value pairs with better styling
+    clean_response = re.sub(r'(\w+):\s*([^<\n]+)', r'<span class="key-value-pair"><strong class="kv-key">\1:</strong> <span class="kv-value">\2</span></span>', clean_response)
     
     # Add line breaks
     clean_response = clean_response.replace('\n', '<br>')
     
-    # Wrap consecutive <li> tags in <ul>
-    clean_response = re.sub(r'(<li>.*?</li>(?:<br><li>.*?</li>)*)', r'<ul>\1</ul>', clean_response)
-    clean_response = clean_response.replace('</li><br><li>', '</li><li>')
+    # Wrap consecutive <li> tags in appropriate lists
+    clean_response = re.sub(r'(<li class="analysis-list-item">.*?</li>(?:<br><li class="analysis-list-item">.*?</li>)*)', r'<ul class="analysis-list">\1</ul>', clean_response)
+    clean_response = re.sub(r'(<li class="analysis-numbered-item">.*?</li>(?:<br><li class="analysis-numbered-item">.*?</li>)*)', r'<ol class="analysis-numbered-list">\1</ol>', clean_response)
+    clean_response = clean_response.replace('</li><br><li class="analysis-list-item">', '</li><li class="analysis-list-item">')
+    clean_response = clean_response.replace('</li><br><li class="analysis-numbered-item">', '</li><li class="analysis-numbered-item">')
+    
+    # Clean up card structures
+    clean_response = re.sub(r'<div class="analysis-card-border-top"></div><br><div class="analysis-card-content">', '<div class="analysis-card"><div class="analysis-card-content">', clean_response)
+    clean_response = re.sub(r'</div><br><div class="analysis-card-border-bottom"></div>', '</div></div>', clean_response)
+    
+    # Clean up extra breaks around elements
+    clean_response = clean_response.replace('<br><hr class="section-divider"><br>', '<hr class="section-divider">')
+    clean_response = clean_response.replace('<br><hr class="content-divider"><br>', '<hr class="content-divider">')
+    clean_response = clean_response.replace('<hr class="section-divider"><br>', '<hr class="section-divider">')
+    clean_response = clean_response.replace('<hr class="content-divider"><br>', '<hr class="content-divider">')
     
     return clean_response
 
@@ -226,8 +279,8 @@ def compare_libraries():
         comparison = bot_instance.compare_libraries(lib1, lib2)
         return {
             'comparison': format_response_for_web(comparison),
-            'lib1': lib1,
-            'lib2': lib2
+            'lib1': bot_instance.get_canonical_display_name(lib1),
+            'lib2': bot_instance.get_canonical_display_name(lib2)
         }
     
     return handle_api_request(compare)

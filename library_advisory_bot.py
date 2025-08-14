@@ -11,7 +11,7 @@ import re
 import requests
 import logging
 from datetime import datetime
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Any
 from dataclasses import dataclass
 import argparse
 import html
@@ -96,17 +96,86 @@ class Style:
     
     @staticmethod
     def card(title: str, content: str, icon: str = "", color: str = PRIMARY) -> str:
-        """Create a simple card layout"""
-        width = min(80, os.get_terminal_size().columns - 4) if hasattr(os, 'get_terminal_size') else 76
-        header = f"{color}{Style.BOLD}{icon} {title}{Style.RESET}"
-        separator = f"{color}{'─' * width}{Style.RESET}"
-        formatted_content = "\n".join(f"  {line}" for line in content.split('\n') if line.strip())
-        return f"{header}\n{separator}\n{formatted_content}\n"
+        """Create a well-formatted card layout with improved spacing and visual hierarchy"""
+        try:
+            width = min(85, os.get_terminal_size().columns - 4)
+        except Exception:
+            width = 80
+        
+        # Header with better spacing
+        header = f"\n{color}{Style.BOLD}{icon} {title.upper()}{Style.RESET}"
+        
+        # Top border
+        top_border = f"{color}┌{'─' * (width - 2)}┐{Style.RESET}"
+        bottom_border = f"{color}└{'─' * (width - 2)}┘{Style.RESET}"
+        
+        # Format content with proper indentation and line wrapping
+        lines = []
+        for line in content.split('\n'):
+            if line.strip():
+                # Wrap long lines
+                if len(line) > width - 6:
+                    words = line.split()
+                    current_line = "│  "
+                    for word in words:
+                        if len(current_line + word) > width - 4:
+                            lines.append(f"{color}{current_line.ljust(width - 1)}│{Style.RESET}")
+                            current_line = "│  " + word + " "
+                        else:
+                            current_line += word + " "
+                    if current_line.strip() != "│":
+                        lines.append(f"{color}{current_line.ljust(width - 1)}│{Style.RESET}")
+                else:
+                    padded_line = f"│  {line}".ljust(width - 1)
+                    lines.append(f"{color}{padded_line}│{Style.RESET}")
+            else:
+                lines.append(f"{color}│{' ' * (width - 2)}│{Style.RESET}")
+        
+        # Add some padding
+        if lines:
+            lines.insert(0, f"{color}│{' ' * (width - 2)}│{Style.RESET}")
+            lines.append(f"{color}│{' ' * (width - 2)}│{Style.RESET}")
+        
+        return f"{header}\n{top_border}\n" + "\n".join(lines) + f"\n{bottom_border}\n"
     
     @staticmethod
     def strip_ansi(text: str) -> str:
         """Remove ANSI escape sequences"""
         return re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])').sub('', text)
+    
+    @staticmethod
+    def section_header(title: str, icon: str = "", color: str = PRIMARY) -> str:
+        """Create a prominent section header"""
+        try:
+            width = min(85, os.get_terminal_size().columns - 4)
+        except Exception:
+            width = 80
+        
+        header_text = f"{icon} {title}" if icon else title
+        padding = (width - len(Style.strip_ansi(header_text))) // 2
+        
+        return f"\n{color}{Style.BOLD}{'═' * width}\n{' ' * padding}{header_text}\n{'═' * width}{Style.RESET}\n"
+    
+    @staticmethod
+    def list_item(text: str, icon: str = "•", level: int = 0) -> str:
+        """Create a properly formatted list item with indentation"""
+        indent = "  " * level
+        return f"{indent}{Style.ACCENT}{icon}{Style.RESET} {text}"
+    
+    @staticmethod
+    def key_value(key: str, value: str, icon: str = "") -> str:
+        """Format key-value pairs with consistent styling"""
+        icon_part = f"{icon} " if icon else ""
+        return f"{icon_part}{Style.BOLD}{key}:{Style.RESET} {Style.colorize(value, Style.ACCENT)}"
+    
+    @staticmethod
+    def divider(char: str = "─", color: str = MUTED) -> str:
+        """Create a visual divider"""
+        try:
+            width = min(85, os.get_terminal_size().columns - 4)
+        except Exception:
+            width = 80
+        return f"\n{color}{char * width}{Style.RESET}\n"
 
 @dataclass
 class LibraryData:
@@ -122,7 +191,7 @@ class LibraryData:
     # Analysis data - consolidated into dictionaries
     advantages: Dict[str, str] = None
     disadvantages: Dict[str, str] = None
-    technical: Dict[str, any] = None
+    technical: Dict[str, Any] = None
     
     def __post_init__(self):
         if self.advantages is None:
@@ -207,7 +276,7 @@ class LibraryData:
             "Compatibility": "Potential integration issues"
         })
     
-    def _get_technical_data(self) -> Dict[str, any]:
+    def _get_technical_data(self) -> Dict[str, Any]:
         """Get technical data based on library name"""
         technical_db = {
             "React": {"complexity": 4, "performance": 4, "learning": 4},
@@ -236,6 +305,7 @@ class LibraryAdvisoryBot:
         load_dotenv()
         self.conversation_history = []
         self.known_libraries = self._load_library_database()
+        self._name_index = self._build_name_index(self.known_libraries)
         self.system_prompt = self._get_system_prompt()
         self.azure_client = None
         self.use_ai = False
@@ -245,6 +315,14 @@ class LibraryAdvisoryBot:
         self._analysis_cache = {}
         self._registry_cache = {}
         self._cache_max_size = Config.CACHE_MAX_SIZE
+        # Reuse HTTP connections and set a UA
+        self._http = requests.Session()
+        try:
+            self._http.headers.update({
+                'User-Agent': 'LibraryAdvisoryBot/1.0 (+https://local.app)'
+            })
+        except Exception:
+            pass
         
         logger.info("Library Advisory Bot initialized")
     
@@ -340,6 +418,49 @@ Format responses with clear sections: Overview, Registry Info, Advantages, Disad
             libraries[key] = LibraryData(**data)
         
         return libraries
+
+    def _normalize_name(self, name: str) -> str:
+        """Normalize library names for consistent lookup"""
+        return re.sub(r'[^a-z0-9]+', '', name.lower())
+
+    def _build_name_index(self, libraries: Dict[str, 'LibraryData']) -> Dict[str, str]:
+        """Build an index of normalized names and common aliases -> canonical key"""
+        index: Dict[str, str] = {}
+        for key, lib in libraries.items():
+            index[self._normalize_name(key)] = key
+            index[self._normalize_name(lib.name)] = key
+            if lib.name.lower().endswith('.js'):
+                alias = lib.name.lower().replace('.js', '')
+                index[self._normalize_name(alias)] = key
+                index[self._normalize_name(alias + 'js')] = key
+            index[self._normalize_name(lib.name.replace('.', ''))] = key
+        aliases = {
+            'reactjs': 'react', 'reactjsx': 'react',
+            'vuejs': 'vue', 'vuejsx': 'vue',
+            'expressjs': 'express', 'nodeexpress': 'express'
+        }
+        for alias, target in aliases.items():
+            n = self._normalize_name(alias)
+            index[n] = target if target in libraries else index.get(self._normalize_name(target), target)
+        return index
+
+    def canonicalize_library(self, name: str) -> Tuple[Optional[str], Optional['LibraryData']]:
+        """Return canonical key and data for a user-supplied library name"""
+        if not name:
+            return None, None
+        norm = self._normalize_name(name)
+        key = self._name_index.get(norm)
+        if key and key in self.known_libraries:
+            return key, self.known_libraries[key]
+        for k, lib in self.known_libraries.items():
+            if lib.name.lower() == name.lower() or k.lower() == name.lower():
+                return k, lib
+        return None, None
+
+    def get_canonical_display_name(self, name: str) -> str:
+        """Return the official display name if known, else the original input"""
+        key, data = self.canonicalize_library(name)
+        return data.name if data else name
     
     def _get_default_data(self) -> Dict:
         """Default library data"""
@@ -393,7 +514,7 @@ Format responses with clear sections: Overview, Registry Info, Advantages, Disad
                 meta_url = f"https://api.npmjs.org/downloads/point/last-week/{package_name}"
                 pkg_url = f"https://www.npmjs.com/package/{package_name}"
             
-            response = requests.get(url, timeout=10)
+            response = self._http.get(url, timeout=10)
             if response.status_code != 200:
                 return {"status": "not_found", "package_name": package_name, "registry": registry_type.title()}
             
@@ -404,7 +525,7 @@ Format responses with clear sections: Overview, Registry Info, Advantages, Disad
                 versions_count = len(data.get('versions', []))
                 
                 # Get NuGet metadata
-                meta_response = requests.get(meta_url, timeout=10)
+                meta_response = self._http.get(meta_url, timeout=10)
                 metadata = {}
                 if meta_response.status_code == 200:
                     meta_data = meta_response.json()
@@ -421,7 +542,7 @@ Format responses with clear sections: Overview, Registry Info, Advantages, Disad
                 versions_count = len(data.get('versions', {}))
                 
                 # Get npm download stats
-                downloads_response = requests.get(meta_url, timeout=5)
+                downloads_response = self._http.get(meta_url, timeout=5)
                 weekly_downloads = "Unknown"
                 if downloads_response.status_code == 200:
                     weekly_downloads = downloads_response.json().get('downloads', 'Unknown')
@@ -582,59 +703,84 @@ Format responses with clear sections: Overview, Registry Info, Advantages, Disad
     def analyze_library(self, library_name: str) -> str:
         """Analyze a library with optimized output"""
         library_name_lower = library_name.lower()
-        
-        # Find library data
-        lib_data = None
-        for key, data in self.known_libraries.items():
-            if key == library_name_lower or data.name.lower() == library_name_lower:
-                lib_data = data
-                break
-        
+
+        canon_key, lib_data = self.canonicalize_library(library_name)
+
         if lib_data:
-            analysis = self._generate_analysis(lib_data)
+            if canon_key in self._analysis_cache:
+                analysis = self._analysis_cache[canon_key]
+            else:
+                analysis = self._generate_analysis(lib_data)
+                if len(self._analysis_cache) >= self._cache_max_size:
+                    oldest = next(iter(self._analysis_cache))
+                    del self._analysis_cache[oldest]
+                self._analysis_cache[canon_key] = analysis
         else:
             analysis = self._generate_unknown_analysis(library_name)
         
         # Enhance with AI if available
         if self.use_ai:
-            ai_response = self._call_azure_openai(f"analyze {library_name}")
+            ai_response = self._call_azure_openai(f"analyze {self.get_canonical_display_name(library_name)}")
             if ai_response:
                 return f"{analysis}\n\n{Style.card('AI-Enhanced Analysis', ai_response, '🤖', Style.ACCENT)}"
         
         return analysis
     
     def _generate_analysis(self, lib_data: LibraryData) -> str:
-        """Generate optimized analysis"""
+        """Generate beautifully formatted analysis with improved structure"""
         sections = []
         
-        # Header
-        sections.append(f"\n{Style.HEADER}{Style.BOLD}{Style.ANALYSIS} Library Analysis: {lib_data.name}{Style.RESET}\n")
+        # Main header
+        sections.append(Style.section_header(f"Library Analysis: {lib_data.name}", Style.ANALYSIS, Style.HEADER))
         
-        # Overview
-        overview = f"{lib_data.description}\n\n{Style.GEAR} Language: {Style.colorize(lib_data.language, Style.ACCENT)}\n{Style.LIBRARY} Category: {Style.colorize(lib_data.category, Style.ACCENT)}\n{Style.SHIELD} License: {Style.colorize(lib_data.license, Style.ACCENT)}\n{Style.STAR} Popularity: {Style.colorize(lib_data.popularity, Style.ACCENT)}"
+        # Overview section with better formatting
+        overview_items = [
+            f"{lib_data.description}",
+            "",
+            Style.key_value("Language", lib_data.language, Style.GEAR),
+            Style.key_value("Category", lib_data.category, Style.LIBRARY),
+            Style.key_value("License", lib_data.license, Style.SHIELD),
+            Style.key_value("Popularity", lib_data.popularity, Style.STAR)
+        ]
+        overview = "\n".join(overview_items)
         sections.append(Style.card("Overview", overview, Style.INFO_ICON, Style.PRIMARY))
         
-        # Advantages
-        adv_text = "\n".join(f"{Style.CHECK} {Style.BOLD}{k}{Style.RESET}: {v}" for k, v in lib_data.advantages.items())
-        sections.append(Style.card("Advantages", adv_text, Style.SUCCESS_ICON, Style.SUCCESS))
+        # Advantages with better list formatting
+        adv_items = []
+        for k, v in lib_data.advantages.items():
+            adv_items.append(Style.list_item(f"{Style.BOLD}{k}{Style.RESET}: {v}", Style.CHECK))
+        sections.append(Style.card("Key Advantages", "\n".join(adv_items), Style.SUCCESS_ICON, Style.SUCCESS))
         
-        # Disadvantages
-        dis_text = "\n".join(f"{Style.CROSS} {Style.BOLD}{k}{Style.RESET}: {v}" for k, v in lib_data.disadvantages.items())
-        sections.append(Style.card("Disadvantages", dis_text, Style.WARNING_ICON, Style.WARNING))
+        # Disadvantages with better list formatting
+        dis_items = []
+        for k, v in lib_data.disadvantages.items():
+            dis_items.append(Style.list_item(f"{Style.BOLD}{k}{Style.RESET}: {v}", Style.CROSS))
+        sections.append(Style.card("Potential Drawbacks", "\n".join(dis_items), Style.WARNING_ICON, Style.WARNING))
         
-        # Technical considerations
+        # Technical considerations with visual indicators
         tech = lib_data.technical
         complexity_desc = ["Very Easy", "Easy", "Moderate", "Hard", "Very Hard"][tech['complexity']]
         perf_desc = ["Poor", "Fair", "Good", "Very Good", "Excellent"][tech['performance']]
         learn_desc = ["Very Easy", "Easy", "Moderate", "Hard", "Very Hard"][tech['learning']]
         
-        tech_text = f"{Style.GEAR} Complexity: {Style.colorize(complexity_desc, Style.ACCENT)}\n{Style.CHART} Performance: {Style.colorize(perf_desc, Style.ACCENT)}\n{Style.LIGHTBULB} Learning Curve: {Style.colorize(learn_desc, Style.ACCENT)}"
-        sections.append(Style.card("Technical Considerations", tech_text, Style.GEAR, Style.INFO))
+        # Add visual indicators for ratings
+        def get_rating_visual(rating: int) -> str:
+            stars = "★" * rating + "☆" * (5 - rating)
+            return f"{stars} ({rating}/5)"
         
-        # Alternatives
+        tech_items = [
+            Style.key_value("Complexity Level", f"{complexity_desc} {get_rating_visual(tech['complexity'])}", Style.GEAR),
+            Style.key_value("Performance Rating", f"{perf_desc} {get_rating_visual(tech['performance'])}", Style.CHART),
+            Style.key_value("Learning Curve", f"{learn_desc} {get_rating_visual(tech['learning'])}", Style.LIGHTBULB)
+        ]
+        sections.append(Style.card("Technical Assessment", "\n".join(tech_items), Style.GEAR, Style.INFO))
+        
+        # Alternatives with better presentation
         if lib_data.alternatives:
-            alt_text = "\n".join(f"{Style.ARROW} {alt}" for alt in lib_data.alternatives[:5])
-            sections.append(Style.card("Similar Libraries", alt_text, Style.COMPARE, Style.MUTED))
+            alt_items = []
+            for i, alt in enumerate(lib_data.alternatives[:5], 1):
+                alt_items.append(Style.list_item(alt, f"{i}.", 0))
+            sections.append(Style.card("Similar Libraries & Alternatives", "\n".join(alt_items), Style.COMPARE, Style.MUTED))
         
         return "\n".join(sections)
     
@@ -649,7 +795,9 @@ Format responses with clear sections: Overview, Registry Info, Advantages, Disad
     
     def compare_libraries(self, lib1: str, lib2: str) -> str:
         """Compare two libraries"""
-        header = f"\n{Style.HEADER}{Style.BOLD}{Style.COMPARE} Library Comparison: {lib1} vs {lib2}{Style.RESET}\n"
+        disp1 = self.get_canonical_display_name(lib1)
+        disp2 = self.get_canonical_display_name(lib2)
+        header = f"\n{Style.HEADER}{Style.BOLD}{Style.COMPARE} Library Comparison: {disp1} vs {disp2}{Style.RESET}\n"
         
         analysis1 = self.analyze_library(lib1)
         analysis2 = self.analyze_library(lib2)
@@ -665,7 +813,7 @@ Format responses with clear sections: Overview, Registry Info, Advantages, Disad
         return comparison
     
     def get_recommendations(self, category: str) -> str:
-        """Get recommendations for a category"""
+        """Get well-formatted recommendations for a category"""
         category_lower = category.lower()
         matching_libs = [
             lib for lib in self.known_libraries.values()
@@ -673,20 +821,36 @@ Format responses with clear sections: Overview, Registry Info, Advantages, Disad
         ]
         
         if not matching_libs:
-            available = "\n".join(f"  • {cat}" for cat in set(lib.category for lib in self.known_libraries.values()))
+            categories = list(set(lib.category for lib in self.known_libraries.values()))
+            available_items = []
+            for cat in sorted(categories):
+                available_items.append(Style.list_item(cat, Style.ARROW))
+            
             return Style.card(
                 "Category Not Found",
-                f"{Style.WARNING}No libraries found for: {category}{Style.RESET}\n\nAvailable categories:\n{available}",
+                f"{Style.WARNING}No libraries found for: {category}{Style.RESET}\n\nAvailable categories:\n" + "\n".join(available_items),
                 Style.WARNING_ICON,
                 Style.WARNING
             )
         
-        # Generate recommendations
-        sections = [f"\n{Style.HEADER}{Style.BOLD}{Style.TARGET} Recommendations: {category.title()}{Style.RESET}\n"]
+        # Generate recommendations with better structure
+        sections = []
+        sections.append(Style.section_header(f"Recommendations: {category.title()}", Style.TARGET, Style.HEADER))
         
-        for lib in matching_libs[:5]:
-            lib_content = f"{lib.description}\n\n{Style.GEAR} Language: {Style.colorize(lib.language, Style.ACCENT)}\n{Style.STAR} Popularity: {Style.badge(lib.popularity, Style.PRIMARY)}\n{Style.SHIELD} License: {Style.badge(lib.license, Style.INFO)}\n\n{Style.ARROW} For analysis: {Style.colorize(f'analyze {lib.name}', Style.ACCENT)}"
-            sections.append(Style.card(lib.name, lib_content, Style.LIBRARY, Style.PRIMARY))
+        for i, lib in enumerate(matching_libs[:5], 1):
+            # Create detailed recommendation card
+            lib_items = [
+                f"{lib.description}",
+                "",
+                Style.key_value("Language", lib.language, Style.GEAR),
+                Style.key_value("Popularity", lib.popularity, Style.STAR),
+                Style.key_value("License", lib.license, Style.SHIELD),
+                "",
+                Style.list_item(f"Run: {Style.colorize(f'analyze {lib.name}', Style.ACCENT)} for detailed analysis", Style.LIGHTBULB)
+            ]
+            
+            lib_content = "\n".join(lib_items)
+            sections.append(Style.card(f"{i}. {lib.name}", lib_content, Style.LIBRARY, Style.PRIMARY))
         
         return "\n".join(sections)
     

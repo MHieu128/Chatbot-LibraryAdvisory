@@ -492,3 +492,256 @@ body {
     background-color: #f8d7da;
     color: #721c24;
 }
+
+/* Enhanced Analysis Formatting */
+.analysis-title {
+    color: var(--primary-color);
+    border-bottom: 3px solid var(--primary-color);
+    padding-bottom: 10px;
+    margin: 20px 0;
+    font-size: 1.8rem;
+    font-weight: 700;
+}
+
+.analysis-section {
+    color: var(--dark-color);
+    margin: 25px 0 15px 0;
+    font-size: 1.4rem;
+    font-weight: 600;
+    border-left: 4px solid var(--primary-color);
+    padding-left: 15px;
+}
+
+.analysis-subsection {
+    color: var(--secondary-color);
+    margin: 20px 0 10px 0;
+    font-size: 1.2rem;
+    font-weight: 600;
+}
+
+.analysis-subheading {
+    color: var(--dark-color);
+    margin: 15px 0 8px 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+/* Analysis Cards */
+.analysis-card {
+    background: linear-gradient(135deg, #ffffff, #f8f9fa);
+    border: 2px solid #e9ecef;
+    border-radius: 12px;
+    margin: 15px 0;
+    overflow: hidden;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+    transition: all 0.3s ease;
+}
+
+.analysis-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+}
+
+.analysis-card-content {
+    padding: 20px;
+    line-height: 1.6;
+}
+
+/* Section Dividers */
+.section-divider {
+    border: none;
+    height: 3px;
+    background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+    margin: 30px 0;
+    border-radius: 2px;
+}
+
+.content-divider {
+    border: none;
+    height: 1px;
+    background-color: #dee2e6;
+    margin: 20px 0;
+}
+
+/* Enhanced Lists */
+.analysis-list {
+    list-style: none;
+    padding-left: 0;
+    margin: 15px 0;
+}
+
+.analysis-list-item {
+    padding: 8px 0 8px 30px;
+    position: relative;
+    line-height: 1.5;
+    border-left: 2px solid transparent;
+    transition: all 0.3s ease;
+}
+
+.analysis-list-item:hover {
+    background-color: #f8f9fa;
+    border-left-color: var(--primary-color);
+    padding-left: 35px;
+}
+
+.analysis-list-item::before {
+    content: "";
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 6px;
+    height: 6px;
+    background-color: var(--primary-color);
+    border-radius: 50%;
+}
+
+.analysis-numbered-list {
+    padding-left: 0;
+    counter-reset: item;
+    margin: 15px 0;
+}
+
+.analysis-numbered-item {
+    display: block;
+    padding: 8px 0 8px 40px;
+    position: relative;
+    line-height: 1.5;
+    counter-increment: item;
+    border-left: 2px solid transparent;
+    transition: all 0.3s ease;
+}
+
+.analysis-numbered-item:hover {
+    background-color: #f8f9fa;
+    border-left-color: var(--success-color);
+    padding-left: 45px;
+}
+
+.analysis-numbered-item::before {
+    content: counter(item);
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: linear-gradient(135deg, var(--primary-color), var(--success-color));
+    color: white;
+    font-weight: 600;
+    font-size: 12px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.item-number {
+    display: none; /* Hide since we're using CSS counter */
+}
+
+/* Key-Value Pairs */
+.key-value-pair {
+    display: inline-block;
+    margin: 5px 0;
+    padding: 8px 12px;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    border-left: 3px solid var(--info-color);
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.kv-key {
+    color: var(--dark-color);
+    font-weight: 600;
+}
+
+.kv-value {
+    color: var(--primary-color);
+    font-weight: 500;
+}
+
+/* Enhanced message content styling */
+.response-content {
+    word-wrap: break-word;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    hyphens: auto;
+    line-height: 1.6;
+}
+
+.response-content h1,
+.response-content h2,
+.response-content h3,
+.response-content h4 {
+    margin-top: 25px;
+    margin-bottom: 15px;
+}
+
+.response-content h1:first-child,
+.response-content h2:first-child,
+.response-content h3:first-child,
+.response-content h4:first-child {
+    margin-top: 10px;
+}
+
+/* Icon styling improvements */
+.response-content i.fas,
+.response-content i.far {
+    margin-right: 8px;
+    width: 16px;
+    text-align: center;
+}
+
+/* Rating stars styling */
+.response-content .fas.fa-star,
+.response-content .far.fa-star {
+    margin-right: 2px;
+    font-size: 14px;
+}
+
+/* Improved spacing for better readability */
+.response-content p {
+    margin-bottom: 12px;
+    line-height: 1.6;
+}
+
+.response-content strong {
+    font-weight: 600;
+}
+
+/* Animation for new content */
+@keyframes slideInFromTop {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.analysis-card {
+    animation: slideInFromTop 0.5s ease-out;
+}
+
+/* Responsive improvements for analysis content */
+@media (max-width: 768px) {
+    .analysis-title {
+        font-size: 1.5rem;
+    }
+    
+    .analysis-section {
+        font-size: 1.2rem;
+    }
+    
+    .analysis-card-content {
+        padding: 15px;
+    }
+    
+    .key-value-pair {
+        padding: 6px 10px;
+    }
+}
