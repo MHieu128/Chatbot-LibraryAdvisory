@@ -21,6 +21,9 @@ app = Flask(__name__)
 config = get_config()
 app.config.from_object(config)
 
+# Set a higher timeout (5 minutes) for requests
+app.config['UPLOAD_TIMEOUT'] = 300  # seconds
+
 # Validate configuration
 try:
     config.validate_config()
@@ -348,8 +351,13 @@ if __name__ == '__main__':
     Path(config.UPLOAD_FOLDER).mkdir(parents=True, exist_ok=True)
     Path(config.FAISS_DB_PATH).mkdir(parents=True, exist_ok=True)
     
+    # Set Werkzeug server timeout
+    import werkzeug
+    werkzeug.serving.WERKZEUG_SERVER_TIMEOUT = 300  # 5 minutes
+    
     app.run(
         host='0.0.0.0',
         port=5000,
-        debug=config.FLASK_DEBUG
+        debug=config.FLASK_DEBUG,
+        threaded=True
     )
